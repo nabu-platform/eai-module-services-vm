@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.text.*?>
+<?import java.lang.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" prefHeight="470.0" prefWidth="357.0" xmlns="http://javafx.com/javafx/8.0.65" xmlns:fx="http://javafx.com/fxml/1" fx:controller="be.nabu.eai.developer.controllers.VMServiceController">
+   <children>
+   <SplitPane dividerPositions="0.5" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" orientation="VERTICAL" prefHeight="470.0" prefWidth="357.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+     <items>
+       <AnchorPane fx:id="ancService" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0">
+            <children>
+               <VBox layoutX="39.0" layoutY="-32.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="230.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                  <children>
+                     <HBox fx:id="hbxButtons" maxHeight="35.0" minHeight="35.0" prefHeight="35.0" prefWidth="200.0" VBox.vgrow="NEVER" />
+                        <ScrollPane fx:id="scrTop" fitToHeight="true" fitToWidth="true" pannable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="SOMETIMES">
+                          <content>
+                            <AnchorPane>
+                                 <children>
+                                    <VBox fx:id="panService" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+                                 </children>
+                              </AnchorPane>
+                          </content>
+                        </ScrollPane>
+                  </children>
+               </VBox>
+            </children>
+            </AnchorPane>
+       <AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0">
+            <children>
+               <TabPane layoutX="70.0" layoutY="-19.0" prefHeight="230.0" prefWidth="355.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                 <tabs>
+                   <Tab fx:id="tabInterface" text="Interface">
+                           <content>
+                              <AnchorPane>
+                                 <children>
+                                    <VBox fx:id="vbxInterface" prefHeight="202.0" prefWidth="410.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                       <children>
+                                          <HBox>
+                                             <children>
+                                                <CheckBox fx:id="chkValidateInput" contentDisplay="RIGHT" mnemonicParsing="false" text="Validate Input" />
+                                                <TextField fx:id="txtInterface" HBox.hgrow="ALWAYS" />
+                                                <CheckBox fx:id="chkValidateOutput" mnemonicParsing="false" text="Validate Output" />
+                                             </children>
+                                          </HBox>
+                                          <SplitPane dividerPositions="0.5" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" VBox.vgrow="ALWAYS">
+                                             <items>
+                                                <ScrollPane fitToHeight="true" fitToWidth="true">
+                                                  <content>
+                                                    <AnchorPane fx:id="panInput" />
+                                                  </content>
+                                                </ScrollPane>
+                                                <ScrollPane fitToHeight="true" fitToWidth="true">
+                                                   <content>
+                                                      <AnchorPane fx:id="panOutput" />
+                                                   </content>
+                                                </ScrollPane>
+                                             </items>
+                                          </SplitPane>
+                                       </children>
+                                    </VBox>
+                                 </children>
+                              </AnchorPane>
+                           </content>
+                        </Tab>
+                   <Tab fx:id="tabMap" text="Map">
+                           <content>
+                              <AnchorPane fx:id="panMap">
+                                 <children>
+                                    <SplitPane dividerPositions="0.5, 0.5" prefHeight="200.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                       <items>
+                                          <ScrollPane fx:id="scrLeft" fitToHeight="true" fitToWidth="true" maxWidth="450.0" prefWidth="250.0" SplitPane.resizableWithParent="false">
+                                            <content>
+                                              <AnchorPane fx:id="panLeft" />
+                                            </content>
+                                          </ScrollPane>
+                                          <ScrollPane fitToHeight="true" fitToWidth="true">
+                                             <content>
+                                                <AnchorPane fx:id="panMiddle" />
+                                             </content>
+                                          </ScrollPane>
+                                          <ScrollPane fx:id="scrRight" fitToHeight="true" fitToWidth="true" maxWidth="450.0" prefWidth="250.0" SplitPane.resizableWithParent="false">
+                                             <content>
+                                                <AnchorPane fx:id="panRight" />
+                                             </content>
+                                          </ScrollPane>
+                                       </items>
+                                    </SplitPane>
+                                 </children>
+                              </AnchorPane>
+                           </content>
+                        </Tab>
+                 </tabs>
+               </TabPane>
+            </children>
+            </AnchorPane>
+         
+     </items>
+   </SplitPane>
+   </children>
+</AnchorPane>
