@@ -12,9 +12,9 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
-import be.nabu.eai.developer.managers.JDBCServiceGUIManager;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
+import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.drag.TreeDragDrop;
@@ -66,7 +66,7 @@ public class FixedValue {
 							|| (selected.getItem().itemProperty().get().getType() instanceof BeanType && ((BeanType<?>) selected.getItem().itemProperty().get().getType()).getBeanClass().equals(Object.class))) {
 						if (event.getClickCount() == 2) {
 							PropertyUpdater updater = new FixedValuePropertyUpdater(selected.getItem().itemProperty().get(), fixedValues, serviceTree, tree);
-							JDBCServiceGUIManager.buildPopup(MainController.getInstance(), updater, "Update Fixed Value", null);
+							EAIDeveloperUtils.buildPopup(MainController.getInstance(), updater, "Update Fixed Value", null);
 						}
 					}
 				}

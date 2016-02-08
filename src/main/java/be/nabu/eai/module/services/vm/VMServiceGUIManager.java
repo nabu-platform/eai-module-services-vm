@@ -41,19 +41,18 @@ import be.nabu.eai.developer.api.PortableArtifactGUIManager;
 import be.nabu.eai.developer.api.ValidationSelectableArtifactGUIManager;
 import be.nabu.eai.developer.components.RepositoryBrowser;
 import be.nabu.eai.developer.controllers.VMServiceController;
-import be.nabu.eai.developer.managers.JDBCServiceGUIManager;
 import be.nabu.eai.developer.managers.ServiceGUIManager;
-import be.nabu.eai.developer.managers.StructureGUIManager;
 import be.nabu.eai.developer.managers.util.DoubleAmountListener;
-import be.nabu.eai.developer.managers.util.ElementClipboardHandler;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
 import be.nabu.eai.developer.managers.util.ElementMarshallable;
-import be.nabu.eai.developer.managers.util.ElementSelectionListener;
-import be.nabu.eai.developer.managers.util.ElementTreeItem;
 import be.nabu.eai.developer.managers.util.MovablePane;
 import be.nabu.eai.developer.managers.util.RootElementWithPush;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.managers.util.SimplePropertyUpdater;
+import be.nabu.eai.developer.util.EAIDeveloperUtils;
+import be.nabu.eai.developer.util.ElementClipboardHandler;
+import be.nabu.eai.developer.util.ElementSelectionListener;
+import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.module.services.vm.util.DropLinkListener;
 import be.nabu.eai.module.services.vm.util.DropWrapper;
 import be.nabu.eai.module.services.vm.util.FixedValue;
@@ -64,6 +63,7 @@ import be.nabu.eai.module.services.vm.util.RemoveLinkListener;
 import be.nabu.eai.module.services.vm.util.StepClipboardHandler;
 import be.nabu.eai.module.services.vm.util.StepPropertyProvider;
 import be.nabu.eai.module.services.vm.util.StepTreeItem;
+import be.nabu.eai.module.types.structure.StructureGUIManager;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Repository;
@@ -165,7 +165,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 		final SimplePropertyUpdater updater = new SimplePropertyUpdater(true, new LinkedHashSet<Property<?>>(properties));
 		final VMServiceGUIInstance instance = new VMServiceGUIInstance(this);
-		JDBCServiceGUIManager.buildPopup(controller, updater, "Create " + getArtifactName(), new EventHandler<MouseEvent>() {
+		EAIDeveloperUtils.buildPopup(controller, updater, "Create " + getArtifactName(), new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent arg0) {
 				try {

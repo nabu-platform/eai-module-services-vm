@@ -7,11 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
+import be.nabu.eai.module.types.structure.StructureManager;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
-import be.nabu.eai.repository.managers.StructureManager;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
