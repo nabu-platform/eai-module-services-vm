@@ -617,17 +617,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				if (serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get() instanceof Map) {
 					Dragboard dragboard = event.getDragboard();
 					if (dragboard != null) {
-						String id = (String) dragboard.getContent(TreeDragDrop.getDataFormat(TreeDragDrop.DATA_TYPE_TREE));
-						// the drag happened from a tree
-						if (id != null && id.equals("repository")) {
-							Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
-							// this will be the path in the tree
-							if (content != null) {
-								String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
-								if (serviceId != null) {
-									event.acceptTransferModes(TransferMode.MOVE);
-									event.consume();
-								}
+						Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
+						// this will be the path in the tree
+						if (content != null) {
+							String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
+							if (serviceId != null) {
+								event.acceptTransferModes(TransferMode.MOVE);
+								event.consume();
 							}
 						}
 					}
@@ -641,27 +637,23 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					Map target = (Map) serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get();
 					Dragboard dragboard = event.getDragboard();
 					if (dragboard != null) {
-						String id = (String) dragboard.getContent(TreeDragDrop.getDataFormat(TreeDragDrop.DATA_TYPE_TREE));
-						// the drag happened from a tree
-						if (id != null && id.equals("repository")) {
-							Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
-							// this will be the path in the tree
-							if (content != null) {
-								String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
-								if (serviceId != null) {
-									Invoke invoke = new Invoke();
-									invoke.setParent(target);
-									invoke.setServiceId(serviceId);
-									// the position is relative to where you dropped it, not the scene!
+						Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
+						// this will be the path in the tree
+						if (content != null) {
+							String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
+							if (serviceId != null) {
+								Invoke invoke = new Invoke();
+								invoke.setParent(target);
+								invoke.setServiceId(serviceId);
+								// the position is relative to where you dropped it, not the scene!
 //									invoke.setX(event.getSceneX());
 //									invoke.setY(event.getSceneY());
-									invoke.setX(event.getX());
-									invoke.setY(event.getY());
-									target.getChildren().add(invoke);
-									drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree);
-									serviceTree.getSelectionModel().getSelectedItem().refresh();
-									MainController.getInstance().setChanged();
-								}
+								invoke.setX(event.getX());
+								invoke.setY(event.getY());
+								target.getChildren().add(invoke);
+								drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree);
+								serviceTree.getSelectionModel().getSelectedItem().refresh();
+								MainController.getInstance().setChanged();
 							}
 						}
 					}
