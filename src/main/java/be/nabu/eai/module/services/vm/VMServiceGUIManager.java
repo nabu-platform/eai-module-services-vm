@@ -88,6 +88,7 @@ import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.api.VMService;
+import be.nabu.libs.services.vm.step.Break;
 import be.nabu.libs.services.vm.step.Catch;
 import be.nabu.libs.services.vm.step.Drop;
 import be.nabu.libs.services.vm.step.Finally;
@@ -264,6 +265,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Catch.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Finally.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Throw.class));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Break.class));
 
 		serviceController.getPanService().getChildren().add(serviceTree);
 		
