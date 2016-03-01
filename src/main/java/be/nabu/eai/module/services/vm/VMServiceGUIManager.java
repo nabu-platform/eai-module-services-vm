@@ -1085,9 +1085,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return false;
 	}
 
-	@Override
-	public String getCategory() {
-		return "Services";
-	}
+	// it is important enough to put in the main tree
+//	@Override
+//	public String getCategory() {
+//		return "Services";
+//	}
 	
 }
