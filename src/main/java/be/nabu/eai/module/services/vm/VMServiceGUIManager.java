@@ -511,7 +511,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									if (fixedValue == null) {
 										controller.notify(new ValidationMessage(Severity.ERROR, "The fixed value to " + link.getTo() + " is no longer valid"));
 										if (removeInvalid) {
-											iterator.remove();
+											linkIterator.remove();
 										}
 									}
 									else {
