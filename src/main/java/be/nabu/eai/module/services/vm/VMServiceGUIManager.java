@@ -166,9 +166,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 		final SimplePropertyUpdater updater = new SimplePropertyUpdater(true, new LinkedHashSet<Property<?>>(properties));
 		final VMServiceGUIInstance instance = new VMServiceGUIInstance(this);
-		EAIDeveloperUtils.buildPopup(controller, updater, "Create " + getArtifactName(), new EventHandler<MouseEvent>() {
+		EAIDeveloperUtils.buildPopup(controller, updater, "Create " + getArtifactName(), new EventHandler<ActionEvent>() {
 			@Override
-			public void handle(MouseEvent arg0) {
+			public void handle(ActionEvent arg0) {
 				try {
 					String name = updater.getValue("Name");
 					RepositoryEntry entry = ((RepositoryEntry) target.itemProperty().get()).createNode(name, getArtifactManager(), true);
