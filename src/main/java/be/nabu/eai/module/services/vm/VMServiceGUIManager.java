@@ -114,7 +114,6 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 
 	static {
 		URL resource = VMServiceGUIManager.class.getClassLoader().getResource("vmservice.css");
-		System.out.println("LOADING RESOURCE " + resource);
 		if (resource != null) {
 			MainController.registerStyleSheet(resource.toExternalForm());
 		}
