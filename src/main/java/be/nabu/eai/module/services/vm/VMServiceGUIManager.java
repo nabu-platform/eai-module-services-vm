@@ -1,6 +1,7 @@
 package be.nabu.eai.module.services.vm;
 
 import java.io.IOException;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -111,6 +112,14 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
 public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService>, ConfigurableGUIManager<VMService>, ValidationSelectableArtifactGUIManager<VMService> {
 
+	static {
+		URL resource = VMServiceGUIManager.class.getClassLoader().getResource("vmservice.css");
+		System.out.println("LOADING RESOURCE " + resource);
+		if (resource != null) {
+			MainController.registerStyleSheet(resource.toExternalForm());
+		}
+	}
+	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	public static final String DATA_TYPE_STEP = "vmservice-step";
