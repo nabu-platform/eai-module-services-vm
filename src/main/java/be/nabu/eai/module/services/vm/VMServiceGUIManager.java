@@ -10,6 +10,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.ServiceLoader;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,8 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.Tooltip;
@@ -38,6 +42,8 @@ import javafx.scene.layout.VBox;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.api.ArtifactGUIInstance;
 import be.nabu.eai.developer.api.ConfigurableGUIManager;
+import be.nabu.eai.developer.api.InterfaceLister;
+import be.nabu.eai.developer.api.InterfaceLister.InterfaceDescription;
 import be.nabu.eai.developer.api.PortableArtifactGUIManager;
 import be.nabu.eai.developer.api.ValidationSelectableArtifactGUIManager;
 import be.nabu.eai.developer.components.RepositoryBrowser;
@@ -384,6 +390,28 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		AnchorPane.setBottomAnchor(output, 0d);
 		AnchorPane.setLeftAnchor(output, 0d);
 		AnchorPane.setRightAnchor(output, 0d);
+		
+		// populate the interfaces
+		serviceController.getMnuInterfaces().getItems().clear();
+		java.util.Map<String, Menu> map = new TreeMap<String, Menu>();
+		for (InterfaceLister lister : ServiceLoader.load(InterfaceLister.class)) {
+			for (InterfaceDescription description : lister.getInterfaces()) {
+				if (!map.containsKey(description.getCategory())) {
+					map.put(description.getCategory(), new Menu(description.getCategory()));
+				}
+				MenuItem item = new MenuItem(description.getName());
+				item.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent arg0) {
+						serviceController.getTxtInterface().setText(description.getInterface());
+					}
+				});
+				map.get(description.getCategory()).getItems().add(item);
+			}
+		}
+		for (String category : map.keySet()) {
+			serviceController.getMnuInterfaces().getItems().add(map.get(category));
+		}
 		
 		DefinedServiceInterface value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), service.getPipeline().getProperties());
 		serviceController.getTxtInterface().setText(value == null ? null : value.getId());
