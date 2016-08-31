@@ -10,12 +10,15 @@ import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
 import be.nabu.eai.module.types.structure.StructureManager;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.BrokenReferenceArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
+import be.nabu.libs.resources.api.Resource;
+import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
@@ -41,7 +44,7 @@ import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class VMServiceManager implements ArtifactManager<VMService> {
+public class VMServiceManager implements ArtifactManager<VMService>, BrokenReferenceArtifactManager<VMService> {
 
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
@@ -161,6 +164,17 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		updateInterfaceReferences(artifact, from, to);
 		messages.addAll(StructureManager.updateReferences(artifact.getPipeline(), from, to));
 		updateReferences(artifact.getRoot(), from, to);
+		return messages;
+	}
+
+	@Override
+	public List<Validation<?>> updateBrokenReference(ResourceContainer<?> container, String from, String to) throws IOException {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
+		Resource child = container.getChild("service.xml");
+		if (child != null) {
+			EAIRepositoryUtils.updateBrokenReference(child, from, to, Charset.forName("UTF-8"));
+		}
+		new ServiceInterfaceManager().updateBrokenReference(container, from, to);
 		return messages;
 	}
 
