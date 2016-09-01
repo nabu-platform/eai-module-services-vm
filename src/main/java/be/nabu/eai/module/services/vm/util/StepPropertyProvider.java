@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.libs.property.api.Property;
@@ -169,6 +170,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 			}
 		}
 		cell.refresh();
+		MainController.getInstance().setChanged();
 		return messages;
 	}
 	
