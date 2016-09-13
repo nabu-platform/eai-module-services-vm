@@ -125,6 +125,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
+	private boolean disablePipelineEditing;
+	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	public static final String DATA_TYPE_STEP = "vmservice-step";
@@ -834,7 +836,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				(Structure) step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()), 
 				false,
 				step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()).getProperties()
-			), true, true, dropButton);
+			), !disablePipelineEditing, true, dropButton);
 			dropButton.setTree(rightTree);
 		
 			// make sure the "input" & "output" are not editable
@@ -1121,6 +1123,18 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return false;
 	}
 
+	public Tree<Step> getServiceTree() {
+		return serviceTree;
+	}
+
+	public boolean isDisablePipelineEditing() {
+		return disablePipelineEditing;
+	}
+
+	public void setDisablePipelineEditing(boolean disablePipelineEditing) {
+		this.disablePipelineEditing = disablePipelineEditing;
+	}
+	
 	// it is important enough to put in the main tree
 //	@Override
 //	public String getCategory() {
