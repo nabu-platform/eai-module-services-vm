@@ -271,6 +271,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						MainController.getInstance().setChanged();
 					}
 				}
+				else if (event.getCode() == KeyCode.E && event.isControlDown()) {
+					TreeCell<Step> selectedItem = serviceTree.getSelectionModel().getSelectedItem();
+					selectedItem.expandAll();
+				}
 			}
 		});
 
