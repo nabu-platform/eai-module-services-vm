@@ -9,10 +9,12 @@ import java.util.List;
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
 import be.nabu.eai.module.types.structure.StructureManager;
 import be.nabu.eai.repository.EAIRepositoryUtils;
+import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.BrokenReferenceArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.eai.repository.api.ValidatableArtifactManager;
 import be.nabu.eai.repository.api.VariableRefactorArtifactManager;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.property.ValueUtils;
@@ -54,7 +56,7 @@ import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class VMServiceManager implements ArtifactManager<VMService>, BrokenReferenceArtifactManager<VMService>, VariableRefactorArtifactManager<VMService> {
+public class VMServiceManager implements ArtifactManager<VMService>, BrokenReferenceArtifactManager<VMService>, VariableRefactorArtifactManager<VMService>, ValidatableArtifactManager<VMService> {
 
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
@@ -379,6 +381,11 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				rewrite(pathToRewrite.getChildPath(), oldPath.getChildPath(), newPath.getChildPath());
 			}
 		}
+	}
+
+	@Override
+	public List<? extends Validation<?>> validate(VMService service) {
+		return service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());	
 	}
 }
 
