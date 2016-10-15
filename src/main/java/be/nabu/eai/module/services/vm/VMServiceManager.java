@@ -206,6 +206,14 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		}
 		// dependency change
 		else if (impactedArtifact instanceof Type) {
+			// for complex types, the "root" name does not matter but is sent along
+			String typeName = ((Type) impactedArtifact).getName();
+			if (oldPath.startsWith(typeName + "/")) {
+				oldPath = oldPath.substring(typeName.length() + 1);
+			}
+			if (newPath.startsWith(typeName + "/")) {
+				newPath = newPath.substring(typeName.length() + 1);
+			}
 			return updateVariableName(artifact, (Type) impactedArtifact, oldPath, newPath, artifact.getPipeline(), null);
 		}
 		// if we update the spec of a service, we may need to redraw some mappings
