@@ -221,7 +221,6 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 			if (newPath.startsWith(typeName + "/")) {
 				newPath = newPath.substring(typeName.length() + 1);
 			}
-			System.out.println("UPDATING VARIABLE SHIZZLE: " + oldPath + " > " + newPath);
 			return updateVariableName(artifact, (Type) impactedArtifact, oldPath, newPath, artifact.getPipeline(), null);
 		}
 		// if we update the spec of a service, we may need to redraw some mappings

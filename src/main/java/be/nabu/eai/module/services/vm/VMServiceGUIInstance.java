@@ -10,6 +10,7 @@ import be.nabu.eai.developer.api.ValidatableArtifactGUIInstance;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.validator.api.Validation;
 
@@ -96,5 +97,10 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 	@Override
 	public boolean locate(Validation<?> validation) {
 		return manager.locate(validation);
+	}
+
+	@Override
+	public Artifact getArtifact() {
+		return service;
 	}
 }
