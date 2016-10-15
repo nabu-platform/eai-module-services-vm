@@ -1082,11 +1082,34 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	@Override
 	public boolean locate(Validation<?> validation) {
 		if (!validation.getContext().isEmpty() && serviceTree != null) {
-			List<?> context = new ArrayList(validation.getContext());
-			Collections.reverse(context);
-			return locate(serviceTree, serviceTree.rootProperty().get(), context, 0);
+			if (validation.getContext().size() == 1 && validation.getContext().get(0) instanceof String) {
+				TreeItem<Step> locate = locate(serviceTree.rootProperty().get(), ((String) validation.getContext().get(0)).replaceAll("^.*:", ""));
+				if (locate != null) {
+					TreeCell<Step> treeCell = serviceTree.getTreeCell(locate);
+					treeCell.select();
+					return true;
+				}
+			}
+			else {
+				List<?> context = new ArrayList(validation.getContext());
+				Collections.reverse(context);
+				return locate(serviceTree, serviceTree.rootProperty().get(), context, 0);
+			}
 		}
 		return false;
+	}
+	
+	private TreeItem<Step> locate(TreeItem<Step> item, String id) {
+		if (item.itemProperty().get().getId().equals(id)) {
+			return item;
+		}
+		for (TreeItem<Step> child : item.getChildren()) {
+			TreeItem<Step> locate = locate(child, id);
+			if (locate != null) {
+				return locate;
+			}
+		}
+		return null;
 	}
 	
 	private boolean locate(Tree<Step> tree, TreeItem<Step> item, List<?> context, int counter) {
