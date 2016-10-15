@@ -6,6 +6,9 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
 import be.nabu.eai.module.types.structure.StructureManager;
 import be.nabu.eai.repository.EAIRepositoryUtils;
@@ -17,6 +20,8 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ValidatableArtifactManager;
 import be.nabu.eai.repository.api.VariableRefactorArtifactManager;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.evaluator.QueryParser;
+import be.nabu.libs.evaluator.QueryPart;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
@@ -57,7 +62,9 @@ import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
 public class VMServiceManager implements ArtifactManager<VMService>, BrokenReferenceArtifactManager<VMService>, VariableRefactorArtifactManager<VMService>, ValidatableArtifactManager<VMService> {
-
+	
+	private static Logger logger = LoggerFactory.getLogger(VMServiceManager.class);
+	
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Pipeline pipeline = new ServiceInterfaceManager().loadPipeline(entry, messages);
@@ -192,7 +199,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 	
 	@Override
 	public boolean updateVariableName(VMService artifact, Artifact impactedArtifact, String oldPath, String newPath) {
-		System.out.println("Updating '" + artifact.getId() + "' cause of change in '" + impactedArtifact.getId() + "' > '" + oldPath + "' becomes '" + newPath + "'");
+		logger.info("Updating '" + artifact.getId() + "' cause of change in '" + impactedArtifact.getId() + "' > '" + oldPath + "' becomes '" + newPath + "'");
 		// TODO: if the impacted artifact is another service AND the oldPath & newPath start with input/output > refactor invokes!!
 		// local change
 		if (impactedArtifact == null || artifact.equals(impactedArtifact)) {
@@ -214,6 +221,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 			if (newPath.startsWith(typeName + "/")) {
 				newPath = newPath.substring(typeName.length() + 1);
 			}
+			System.out.println("UPDATING VARIABLE SHIZZLE: " + oldPath + " > " + newPath);
 			return updateVariableName(artifact, (Type) impactedArtifact, oldPath, newPath, artifact.getPipeline(), null);
 		}
 		// if we update the spec of a service, we may need to redraw some mappings
@@ -225,10 +233,12 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 	
 	private static boolean updateVariableName(VMService artifact, Type impactedArtifact, String oldPath, String newPath, ComplexType currentType, String currentPath) {
 		boolean updated = false;
+		System.out.println("CHECKING " + currentType + " == " + impactedArtifact);
 		// any links from this path are impacted
 		if (currentType.equals(impactedArtifact) || !TypeUtils.getUpcastPath(currentType, impactedArtifact).isEmpty()) {
 			String relativeOldPath = currentPath == null ? oldPath : currentPath + "/" + oldPath;
 			String relativeNewPath = currentPath == null ? newPath : currentPath + "/" + newPath;
+			System.out.println("FOUND IMPACTED:" + currentPath + " > " + relativeOldPath + " > " + relativeNewPath);
 			updated = updateVariableName(artifact, relativeOldPath, relativeNewPath);
 		}
 		for (Element<?> element : TypeUtils.getAllChildren(currentType)) {
@@ -277,101 +287,90 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		for (Step step : group.getChildren()) {
 			// update label
 			if (step.getLabel() != null) {
-				ParsedPath parsed = new ParsedPath(step.getLabel());
-				try {
-					rewrite(parsed, oldPath, newPath);
-					String rewritten = parsed.toString();
-					if (!rewritten.equals(step.getLabel())) {
-						updated = true;
-						System.out.println("Updating step 'label' from '" + step.getLabel() + "' to '" + rewritten + "'");
-						step.setLabel(rewritten);
-					}
-				}
-				catch (ParseException e) {
-					e.printStackTrace();
+				String rewritten = rewriteQuery(step.getLabel(), oldPath, newPath);
+				if (!rewritten.equals(step.getLabel())) {
+					updated = true;
+					System.out.println("Updating step 'label' from '" + step.getLabel() + "' to '" + rewritten + "'");
+					step.setLabel(rewritten);
 				}
 			}
 			if (step instanceof Link) {
-				if (((Link) step).getFrom() != null && !((Link) step).getFrom().startsWith("=")) {
-					ParsedPath parsed = new ParsedPath(((Link) step).getFrom());
-					try {
+				String originalFrom = ((Link) step).getFrom();
+				String rewrittenFrom;
+				if (originalFrom != null) {
+					if (!originalFrom.startsWith("=")) {
+						ParsedPath parsed = new ParsedPath(originalFrom);
 						rewrite(parsed, oldPath, newPath);
-						String rewritten = parsed.toString();
-						if (!rewritten.equals(((Link) step).getFrom())) {
-							updated = true;
-							System.out.println("Updating link 'from' from '" + ((Link) step).getFrom() + "' to '" + rewritten + "'");
-							((Link) step).setFrom(rewritten);
-						}
+						rewrittenFrom = parsed.toString();
 					}
-					catch (ParseException e) {
-						e.printStackTrace();
+					else {
+						rewrittenFrom = "=" + rewriteQuery(originalFrom.substring(1), oldPath, newPath);
+					}
+					if (!rewrittenFrom.equals(originalFrom)) {
+						updated = true;
+						System.out.println("Updating link 'from' from '" + originalFrom + "' to '" + rewrittenFrom + "'");
+						((Link) step).setFrom(rewrittenFrom);
 					}
 				}
 				// the "to" in an invoke step is relative to the invoke statement, we don't rewrite it here
-				if (((Link) step).getTo() != null && !((Link) step).getTo().startsWith("=") && (!(step.getParent() instanceof Invoke) || remapInvokes)) {
-					ParsedPath parsed = new ParsedPath(((Link) step).getTo());
-					try {
+				String originalTo = ((Link) step).getTo();
+				if (originalTo != null && (!(step.getParent() instanceof Invoke) || remapInvokes)) {
+					String rewrittenTo;
+					if (!originalTo.startsWith("=")) {
+						ParsedPath parsed = new ParsedPath(originalTo);
 						rewrite(parsed, oldPath, newPath);
-						String rewritten = parsed.toString();
-						if (!rewritten.equals(((Link) step).getTo())) {
-							updated = true;
-							System.out.println("Updating link 'to' from '" + ((Link) step).getTo() + "' to '" + rewritten + "'");
-							((Link) step).setTo(rewritten);
-						}
+						rewrittenTo = parsed.toString();
 					}
-					catch (ParseException e) {
-						e.printStackTrace();
+					else {
+						rewrittenTo = "=" + rewriteQuery(originalTo.substring(1), oldPath, newPath);
+					}
+					if (!rewrittenTo.equals(originalTo)) {
+						updated = true;
+						System.out.println("Updating link 'to' from '" + originalTo + "' to '" + rewrittenTo + "'");
+						((Link) step).setTo(rewrittenTo);
 					}
 				}
 			}
 			else if (step instanceof For) {
-				if (((For) step).getQuery() != null) {
-					ParsedPath parsed = new ParsedPath(((For) step).getQuery());
-					try {
-						rewrite(parsed, oldPath, newPath);
-						String rewritten = parsed.toString();
-						if (!rewritten.equals(((For) step).getQuery())) {
-							updated = true;
-							System.out.println("Updating for 'query' from '" + ((For) step).getQuery() + "' to '" + rewritten + "'");
-							((For) step).setQuery(rewritten);
-						}
-					}
-					catch (ParseException e) {
-						e.printStackTrace();
+				String original = ((For) step).getQuery();
+				if (original != null) {
+					ParsedPath parsed = new ParsedPath(original);
+					rewrite(parsed, oldPath, newPath);
+					String rewritten = parsed.toString();
+					if (!rewritten.equals(original)) {
+						updated = true;
+						System.out.println("Updating for 'query' from '" + original + "' to '" + rewritten + "'");
+						((For) step).setQuery(rewritten);
 					}
 				}
 			}
 			else if (step instanceof Throw) {
-				if (((Throw) step).getMessage() != null && !((Throw) step).getMessage().startsWith("=")) {
-					ParsedPath parsed = new ParsedPath(((Throw) step).getMessage());
-					try {
+				String original = ((Throw) step).getMessage();
+				if (original != null) {
+					String rewritten;
+					if (!original.startsWith("=")) {
+						ParsedPath parsed = new ParsedPath(original);
 						rewrite(parsed, oldPath, newPath);
-						String rewritten = parsed.toString();
-						if (!rewritten.equals(((Throw) step).getMessage())) {
-							updated = true;
-							System.out.println("Updating throw 'message' from '" + ((Throw) step).getMessage() + "' to '" + rewritten + "'");
-							((Throw) step).setMessage(rewritten);
-						}
+						rewritten = parsed.toString();
 					}
-					catch (ParseException e) {
-						e.printStackTrace();
+					else {
+						rewritten = "=" + rewriteQuery(original.substring(1), oldPath, newPath);
+					}
+					if (!rewritten.equals(original)) {
+						updated = true;
+						System.out.println("Updating throw 'message' from '" + original + "' to '" + rewritten + "'");
+						((Throw) step).setMessage(rewritten);
 					}
 				}
 			}
 			else if (step instanceof Switch) {
-				if (((Switch) step).getQuery() != null) {
-					ParsedPath parsed = new ParsedPath(((Switch) step).getQuery());
-					try {
-						rewrite(parsed, oldPath, newPath);
-						String rewritten = parsed.toString();
-						if (!rewritten.equals(((Switch) step).getQuery())) {
-							updated = true;
-							System.out.println("Updating switch 'query' from '" + ((Switch) step).getQuery() + "' to '" + rewritten + "'");
-							((Switch) step).setQuery(rewritten);
-						}
-					}
-					catch (ParseException e) {
-						e.printStackTrace();
+				String original = ((Switch) step).getQuery();
+				if (original != null) {
+					String rewritten = rewriteQuery(original, oldPath, newPath);
+					if (!rewritten.equals(original)) {
+						updated = true;
+						System.out.println("Updating switch 'query' from '" + original + "' to '" + rewritten + "'");
+						((Switch) step).setQuery(rewritten);
 					}
 				}
 			}
@@ -382,12 +381,62 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		return updated;
 	}
 	
-	private static void rewrite(ParsedPath pathToRewrite, ParsedPath oldPath, ParsedPath newPath) throws ParseException {
+	private static void rewrite(ParsedPath pathToRewrite, ParsedPath oldPath, ParsedPath newPath) {
 		if (pathToRewrite.getName().equals(oldPath.getName())) {
 			pathToRewrite.setName(newPath.getName());
+			if (pathToRewrite.getIndex() != null) {
+				String rewriteQuery = rewriteQuery(pathToRewrite.getIndex(), oldPath, newPath);
+				if (!rewriteQuery.equals(pathToRewrite.getIndex())) {
+					System.out.println("Index updated from: '" + pathToRewrite.getIndex() + "' to '" + rewriteQuery + "'");
+					pathToRewrite.setIndex(rewriteQuery);
+				}
+			}
 			if (pathToRewrite.getChildPath() != null && oldPath.getChildPath() != null && newPath.getChildPath() != null) {
 				rewrite(pathToRewrite.getChildPath(), oldPath.getChildPath(), newPath.getChildPath());
 			}
+		}
+	}
+	
+	private static String rewriteQuery(String query, ParsedPath oldPath, ParsedPath newPath) {
+		try {
+			List<QueryPart> parse = QueryParser.getInstance().parse(query);
+			int depth = 0;
+			StringBuilder builder = new StringBuilder();
+			int lastEnd = 0;
+			for (QueryPart part : parse) {
+				// try to recreate the original whitespace
+				for (int i = lastEnd; i < part.getToken().getStart(); i++) {
+					builder.append(" ");
+				}
+				lastEnd = part.getToken().getEnd();
+				if (part.getType() == QueryPart.Type.VARIABLE) {
+					if (depth == 0) {
+						ParsedPath path = new ParsedPath(part.getToken().getContent());
+						rewrite(path, oldPath, newPath);
+						builder.append(path.toString());
+					}
+					else {
+						logger.warn("[!] Found variables at depth that may require rewriting, this is not supported yet");
+						builder.append(part.getToken().getContent());
+					}
+				}
+				else {
+					// print the original content
+					builder.append(part.getToken().getContent());
+					if (part.getType() == QueryPart.Type.INDEX_START) {
+						depth++;
+					}
+					else if (part.getType() == QueryPart.Type.INDEX_STOP) {
+						depth--;
+					}
+				}
+				
+			}
+			return builder.toString();
+		}
+		catch (ParseException e) {
+			logger.warn("Can not rewrite query '" + query + "' because it is not valid", e);
+			return query;
 		}
 	}
 

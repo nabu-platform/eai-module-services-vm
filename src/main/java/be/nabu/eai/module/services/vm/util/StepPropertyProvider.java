@@ -7,6 +7,7 @@ import java.util.Set;
 
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
+import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
@@ -124,6 +125,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (step instanceof Catch) {
 			if (property instanceof VariableProperty) {
+				if (((Catch) step).getVariable() != null && value != null) {
+					ElementTreeItem.renameVariable(MainController.getInstance(), ((Catch) step).getVariable(), (String) value);
+				}
 				((Catch) step).setVariable((String) value);
 			}
 			else if (property instanceof ExceptionProperty) {
@@ -144,9 +148,15 @@ public class StepPropertyProvider implements PropertyUpdater {
 				((For) step).setQuery((String) value);
 			}
 			else if (property instanceof VariableProperty) {
+				if (((For) step).getVariable() != null && value != null) {
+					ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getVariable(), (String) value);
+				}
 				((For) step).setVariable((String) value);
 			}
 			else if (property instanceof IndexProperty) {
+				if (((For) step).getIndex() != null && value != null) {
+					ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getIndex(), (String) value);
+				}
 				((For) step).setIndex((String) value);
 			}
 		}
@@ -163,6 +173,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (step instanceof Sequence) {
 			if (property instanceof TransactionVariableProperty) {
+				if (((Sequence) step).getTransactionVariable() != null && value != null) {
+					ElementTreeItem.renameVariable(MainController.getInstance(), ((Sequence) step).getTransactionVariable(), (String) value);
+				}
 				((Sequence) step).setTransactionVariable((String) value);
 			}
 			else if (property instanceof StepProperty) {
