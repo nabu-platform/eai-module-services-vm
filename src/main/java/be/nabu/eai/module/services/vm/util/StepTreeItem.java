@@ -107,7 +107,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 	}
 
 	@Override
-	public void move(be.nabu.jfx.control.tree.MovableTreeItem.Direction direction) {
+	public TreeItem<Step> move(be.nabu.jfx.control.tree.MovableTreeItem.Direction direction) {
 		Step step = itemProperty().get();
 		if (step.getParent() != null) {
 			int indexInParent = step.getParent().getChildren().indexOf(step);
@@ -158,6 +158,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 			}
 			MainController.getInstance().setChanged();
 		}
+		return null;
 	}
 
 	@Override
