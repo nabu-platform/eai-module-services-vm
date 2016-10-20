@@ -1,5 +1,7 @@
 package be.nabu.eai.module.services.vm.util;
 
+import java.util.Arrays;
+
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.event.EventHandler;
@@ -101,6 +103,14 @@ public class Mapping {
 			.add(toSceneTransform.yProperty())
 			.subtract(targetTransform.yProperty())
 			.subtract(toParentTransform.yProperty()));
+	}
+	
+	public void addStyleClass(String...classes) {
+		shape.getStyleClass().addAll(Arrays.asList(classes));
+	}
+	
+	public void removeStyleClass(String...classes) {
+		shape.getStyleClass().removeAll(Arrays.asList(classes));
 	}
 	
 	private Shape drawCubicCurve() {

@@ -9,6 +9,7 @@ import java.util.Set;
 
 import be.nabu.eai.developer.MainController.PropertyUpdater;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
+import be.nabu.eai.module.services.vm.VMServiceGUIManager;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.vm.step.Link;
@@ -21,9 +22,11 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 
 	private static final SimpleProperty<Boolean> OPTIONAL_PROPERTY = new SimpleProperty<Boolean>("optional", Boolean.class, true);
 	private Link link;
+	private Mapping mapping;
 
-	public LinkPropertyUpdater(Link link) {
-		this.link = link;		
+	public LinkPropertyUpdater(Link link, Mapping mapping) {
+		this.link = link;
+		this.mapping = mapping;		
 	}
 	
 	@Override
@@ -106,6 +109,14 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 		}
 		else {
 			throw new RuntimeException("Unsupported");
+		}
+		if (mapping != null) {
+			if ((link.getFrom() != null && VMServiceGUIManager.hasIndexQuery(new ParsedPath(link.getFrom()))) || (link.getTo() != null && VMServiceGUIManager.hasIndexQuery(new ParsedPath(link.getTo())))) {
+				mapping.addStyleClass("indexQueryLine");
+			}
+			else {
+				mapping.removeStyleClass("indexQueryLine");
+			}
 		}
 		return new ArrayList<ValidationMessage>();
 	}

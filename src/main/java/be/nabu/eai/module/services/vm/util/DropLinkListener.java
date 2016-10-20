@@ -1,6 +1,7 @@
 package be.nabu.eai.module.services.vm.util;
 
 import javafx.event.EventHandler;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import be.nabu.eai.developer.MainController;
@@ -17,6 +18,7 @@ import be.nabu.libs.services.vm.step.Map;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.types.ParsedPath;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
 
 public class DropLinkListener implements TreeDropListener<Element<?>> {
@@ -46,7 +48,9 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 		}
 		else {
 			TreeCell<Element<?>> draggedElement = (TreeCell<Element<?>>) dragged;
-			return service.isMappable(draggedElement.getItem().itemProperty().get(), target.getItem().itemProperty().get());
+			Element<?> fromItem = draggedElement.getItem().itemProperty().get();
+			Element<?> toItem = target.getItem().itemProperty().get();
+			return service.isMappable(fromItem, toItem) || (fromItem.getType() instanceof ComplexType && toItem.getType() instanceof ComplexType && MainController.getInstance().isKeyActive(KeyCode.CONTROL));
 		}
 	}
 
@@ -112,6 +116,10 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 			}
 			setDefaultIndexes(to, target.getTree().rootProperty().get(), !fromIsList);
 			final Link link = new Link(from.toString(), to.toString());
+			link.setMask(MainController.getInstance().isKeyActive(KeyCode.CONTROL));
+			if (link.isMask()) {
+				mapping.addStyleClass("maskLine");
+			}
 			// if the target is an invoke, the mapping has to be done inside the invoke
 			if (target.getTree().get("invoke") != null) {
 				link.setParent(((Invoke) target.getTree().get("invoke")));
@@ -137,7 +145,7 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 			mapping.getShape().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent arg0) {
-					controller.showProperties(new LinkPropertyUpdater(link));
+					controller.showProperties(new LinkPropertyUpdater(link, mapping));
 				}
 			});
 			mapping.setRemoveMapping(new RemoveMapping() {

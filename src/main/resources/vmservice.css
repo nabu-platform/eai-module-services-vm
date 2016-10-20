@@ -5,3 +5,11 @@
 #panService .scroll-pane {
 	-fx-background-color: #FFFFFF;
 }
+
+.maskLine {
+	-fx-stroke: #970013;
+}
+
+.indexQueryLine {
+	-fx-stroke: #4e79fe;
+}

@@ -579,7 +579,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 										mapping.getShape().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 											@Override
 											public void handle(MouseEvent arg0) {
-												controller.showProperties(new LinkPropertyUpdater(link));
+												controller.showProperties(new LinkPropertyUpdater(link, mapping));
 											}
 										});
 									}
@@ -633,7 +633,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									mapping.getShape().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 										@Override
 										public void handle(MouseEvent arg0) {
-											controller.showProperties(new LinkPropertyUpdater(link));
+											controller.showProperties(new LinkPropertyUpdater(link, mapping));
 										}
 									});
 								}
@@ -713,6 +713,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		Pane pane = invokeWrapper.getComponent();
 		serviceController.getPanMiddle().getChildren().add(pane);
 		MovablePane movable = MovablePane.makeMovable(pane);
+		movable.setGridSize(10);
 		movable.xProperty().addListener(new ChangeListener<Number>() {
 			@Override
 			public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
@@ -956,8 +957,26 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		else {
 			Mapping mapping = new Mapping(target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
 			mapping.setRemoveMapping(new RemoveLinkListener(link));
+			if (link.isMask()) {
+				mapping.addStyleClass("maskLine");
+			}
+			if (hasIndexQuery(from) || hasIndexQuery(to)) {
+				mapping.addStyleClass("indexQueryLine");
+			}
+			else {
+				mapping.removeStyleClass("indexQueryLine");
+			}
 			return mapping;
 		}
+	}
+	
+	public static boolean hasIndexQuery(ParsedPath path) {
+		if (path.getIndex() != null && !path.getIndex().matches("[0-9]+")) {
+			return true;
+		}
+		return path.getChildPath() != null
+			? hasIndexQuery(path.getChildPath())
+			: false;
 	}
 			
 	private final class StepMarshallable implements Marshallable<Step> {

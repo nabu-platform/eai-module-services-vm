@@ -95,7 +95,7 @@ public class FixedValue {
 			@Override
 			public void handle(MouseEvent arg0) {
 				cell.show();
-				controller.showProperties(new LinkPropertyUpdater(link));
+				controller.showProperties(new LinkPropertyUpdater(link, null));
 			}
 		});
 		Tooltip.install(image, new Tooltip(link.getFrom()));
