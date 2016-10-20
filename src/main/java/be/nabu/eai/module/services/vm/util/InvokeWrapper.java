@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
@@ -136,8 +138,14 @@ public class InvokeWrapper {
 			}
 		});
 		VBox vbox = new VBox();
+		vbox.getStyleClass().add("invokeWrapper");
 		HBox name = new HBox();
-		name.getChildren().add(new Label(invoke.getServiceId()));
+		name.getStyleClass().add("invokeName");
+		Label nameLabel = new Label(invoke.getServiceId());
+		nameLabel.getStyleClass().add("invokeServiceName");
+		Label invokeLevelLabel = new Label("[" + invoke.getInvocationOrder() + "]");
+		invokeLevelLabel.getStyleClass().add("invokeOrder");
+		name.getChildren().addAll(invokeLevelLabel, nameLabel);
 		vbox.getChildren().add(name);
 		// the input & output should not be scrollable but should resize on demand
 		Service service = invoke.getService(controller.getRepository().getServiceContext());
@@ -158,6 +166,7 @@ public class InvokeWrapper {
 			TreeDragDrop.makeDraggable(output, new ElementLineConnectListener(target));
 		
 			HBox iface = new HBox();
+			iface.getStyleClass().add("interface");
 			iface.getChildren().addAll(input, output);
 			vbox.getChildren().add(iface);
 			vbox.getStyleClass().add("existent");
@@ -168,6 +177,18 @@ public class InvokeWrapper {
 			// the initial resize just won't work...
 			input.setPrefWidth(100);
 			output.setPrefWidth(100);
+			nameLabel.widthProperty().addListener(new ChangeListener<Number>() {
+				@Override
+				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
+					if (arg2.intValue() > 200) {
+						iface.setMinWidth(arg2.doubleValue());
+						if (iface.getPrefWidth() < arg2.doubleValue()) {
+							iface.setPrefWidth(arg2.doubleValue());
+						}
+						nameLabel.widthProperty().removeListener(this);
+					}
+				}
+			});
 		}
 		else {
 			vbox.getStyleClass().add("nonExistent");

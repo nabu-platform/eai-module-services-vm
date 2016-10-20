@@ -2,14 +2,36 @@
 	-fx-background-color: transparent;
 }
 
-#panService .scroll-pane {
+#panService .scroll-pane, .interface {
 	-fx-background-color: #FFFFFF;
 }
 
 .maskLine {
-	-fx-stroke: #970013;
+	-fx-stroke: #FF6347;
 }
 
 .indexQueryLine {
-	-fx-stroke: #4e79fe;
+	-fx-stroke: #20B2AA;
+}
+
+.invokeServiceName, .invokeOrder {
+	-fx-padding: 2px 5px 2px 5px;
+}
+
+.invokeServiceName {
+	-fx-text-fill: #333333;
+}
+.invokeOrder {
+	-fx-text-fill: #AAAAAA;
+}
+
+.invokeWrapper {
+	-fx-border-style: solid;
+	-fx-border-color: #CCCCCC;
+}
+
+.invokeName {
+	-fx-border-style: solid;
+	-fx-border-width: 0px 0px 1px 0px;
+	-fx-border-color: #CCCCCC;
 }
