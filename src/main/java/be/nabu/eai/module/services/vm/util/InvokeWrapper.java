@@ -8,6 +8,7 @@ import java.util.Set;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
+import javafx.geometry.Bounds;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -157,22 +158,28 @@ public class InvokeWrapper {
 			input.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getInputDefinition(), "input"), null, false, false));
 			input.getTreeCell(input.rootProperty().get()).expandedProperty().set(false);
 			TreeDragDrop.makeDroppable(input, new DropLinkListener(controller, mappings, this.service, serviceController, serviceTree));
+			input.getRootCell().getNode().getStyleClass().add("invokeTree");
 			
 			output = new Tree<Element<?>>(new ElementMarshallable());
 			output.setClipboardHandler(new ElementClipboardHandler(output, false));
 			output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
 			output.getTreeCell(output.rootProperty().get()).expandedProperty().set(false);
 			output.set("invoke", invoke);
+			output.getRootCell().getNode().getStyleClass().add("invokeTree");
 			TreeDragDrop.makeDraggable(output, new ElementLineConnectListener(target));
 		
 			HBox iface = new HBox();
 			iface.getStyleClass().add("interface");
+			iface.getStyleClass().add("interfaceContainer");
 			iface.getChildren().addAll(input, output);
 			vbox.getChildren().add(iface);
 			vbox.getStyleClass().add("existent");
 
 			input.resize();
 			output.resize();
+			
+			input.getStyleClass().add("treeContainer");
+			output.getStyleClass().add("treeContainer");
 			
 			// the initial resize just won't work...
 			input.setPrefWidth(100);
@@ -189,6 +196,21 @@ public class InvokeWrapper {
 					}
 				}
 			});
+			// can not find a proper dynamic way of recalculating the holder without visual artifacts 			
+//			input.boundsInLocalProperty().addListener(new ChangeListener<Bounds>() {
+//				@Override
+//				public void changed(ObservableValue<? extends Bounds> arg0, Bounds arg1, Bounds arg2) {
+//					setClasses(iface, input, output, nameLabel, invokeLevelLabel);
+//				}
+//			});
+//			output.boundsInLocalProperty().addListener(new ChangeListener<Bounds>() {
+//				@Override
+//				public void changed(ObservableValue<? extends Bounds> arg0, Bounds arg1, Bounds arg2) {
+//					setClasses(iface, input, output, nameLabel, invokeLevelLabel);
+//				}
+//			});
+			// does not work
+//			vbox.prefWidthProperty().bind(new ComparableAmountListener<Double>(name.widthProperty(), iface.widthProperty(), input.getRootCell().getNode().widthProperty().add(output.getRootCell().getNode().widthProperty()), nameLabel.widthProperty().add(invokeLevelLabel.widthProperty())).maxProperty());
 		}
 		else {
 			vbox.getStyleClass().add("nonExistent");
@@ -198,6 +220,20 @@ public class InvokeWrapper {
 		pane.setLayoutX(invoke.getX());
 		pane.setLayoutY(invoke.getY());
 		return pane;
+	}
+	
+	@SuppressWarnings("unused")
+	private void setClasses(HBox iface, Tree<Element<?>> input, Tree<Element<?>> output, Label nameLabel, Label invokeLevelLabel) {
+		if (input.getRootCell().getNode().getBoundsInLocal().getWidth() + output.getRootCell().getNode().getBoundsInLocal().getWidth() > nameLabel.getBoundsInLocal().getWidth() + invokeLevelLabel.getBoundsInLocal().getWidth()) {
+			iface.getStyleClass().remove("interfaceContainer");
+			input.getStyleClass().add("treeLeftContainer");
+			output.getStyleClass().add("treeRightContainer");
+		}
+		else {
+			iface.getStyleClass().add("interfaceContainer");
+			input.getStyleClass().remove("treeLeftContainer");
+			output.getStyleClass().remove("treeRightContainer");
+		}
 	}
 	
 	private void removeInGroup(StepGroup group) {

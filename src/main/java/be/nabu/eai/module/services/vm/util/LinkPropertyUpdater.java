@@ -34,12 +34,12 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 		Set<Property<?>> properties = new LinkedHashSet<Property<?>>();
 		// if the input is not fixed, explode that as well
 		if (!link.isFixedValue()) {
-			for (String indexed : explode("From: ", new ParsedPath(link.getFrom())).keySet()) {
-				properties.add(new LinkIndexProperty(indexed));
+			for (String indexed : explode(null, new ParsedPath(link.getFrom())).keySet()) {
+				properties.add(new LinkIndexProperty(indexed, true));
 			}
 		}
-		for (String indexed : explode("To: ", new ParsedPath(link.getTo())).keySet()) {
-			properties.add(new LinkIndexProperty(indexed));
+		for (String indexed : explode(null, new ParsedPath(link.getTo())).keySet()) {
+			properties.add(new LinkIndexProperty(indexed, false));
 		}
 		properties.add(OPTIONAL_PROPERTY);
 		return properties;
@@ -63,7 +63,7 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 		List<Value<?>> values = new ArrayList<Value<?>>();
 		for (Property<?> property : getSupportedProperties()) {
 			if (!property.equals(OPTIONAL_PROPERTY)) {
-				values.add(new ValueImpl(property, getCurrentIndex(property)));
+				values.add(new ValueImpl(property, getCurrentIndex((LinkIndexProperty) property)));
 			}
 		}
 		values.add(new ValueImpl(OPTIONAL_PROPERTY, link.isOptional()));
@@ -75,34 +75,29 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 		return true;
 	}
 	
-	private String getCurrentIndex(Property<?> property) {
-		if (isFrom(property)) {
-			return explode("From: ", new ParsedPath(link.getFrom())).get(property.getName());
+	private String getCurrentIndex(LinkIndexProperty property) {
+		if (property.isFrom()) {
+			return explode(null, new ParsedPath(link.getFrom())).get(property.getActualName());
 		}
-		else if (isTo(property)) {
-			return explode("To: ", new ParsedPath(link.getTo())).get(property.getName());
+		else {
+			return explode(null, new ParsedPath(link.getTo())).get(property.getActualName());
 		}
-		throw new RuntimeException("Not supported");
 	}
 	
-	private boolean isFrom(Property<?> property) {
-		return property instanceof LinkIndexProperty && property.getName().startsWith("From: ");
-	}
-	private boolean isTo(Property<?> property) {
-		return property instanceof LinkIndexProperty && property.getName().startsWith("To: ");
-	}
-
 	@Override
 	public List<ValidationMessage> updateProperty(Property<?> property, Object value) {
-		if (isFrom(property)) {
-			ParsedPath from = new ParsedPath(link.getFrom());
-			update(from, new ParsedPath(property.getName().substring("From: /".length())), (String) value);
-			link.setFrom(from.toString());
-		}
-		else if (isTo(property)) {
-			ParsedPath to = new ParsedPath(link.getTo());
-			update(to, new ParsedPath(property.getName().substring("To: /".length())), (String) value);
-			link.setTo(to.toString());
+		if (property instanceof LinkIndexProperty) {
+			LinkIndexProperty linkProperty = (LinkIndexProperty) property;
+			if (linkProperty.isFrom()) {
+				ParsedPath from = new ParsedPath(link.getFrom());
+				update(from, new ParsedPath(linkProperty.getActualName()), (String) value);
+				link.setFrom(from.toString());
+			}
+			else {
+				ParsedPath to = new ParsedPath(link.getTo());
+				update(to, new ParsedPath(linkProperty.getActualName()), (String) value);
+				link.setTo(to.toString());
+			}
 		}
 		else if (property.equals(OPTIONAL_PROPERTY)) {
 			link.setOptional(value instanceof Boolean && (Boolean) value);
@@ -139,9 +134,13 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 	private class LinkIndexProperty implements Property<String> {
 
 		private String name;
+		private String actualName;
+		private boolean from;
 
-		public LinkIndexProperty(String name) {
-			this.name = name;
+		public LinkIndexProperty(String actualName, boolean from) {
+			this.from = from;
+			this.name = (from ? "From: " : "To: ") + (actualName.matches("(/|)result[a-f0-9]{32}.*") ? actualName.substring(39) : actualName);
+			this.actualName = actualName;
 		}
 		@Override
 		public String getName() {
@@ -159,11 +158,18 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 		}
 		@Override
 		public boolean equals(Object object) {
-			return object instanceof LinkIndexProperty && ((LinkIndexProperty) object).getName().equals(name);
+			return object instanceof LinkIndexProperty && ((LinkIndexProperty) object).getActualName().equals(actualName) && ((LinkIndexProperty) object).from == from;
 		}
 		@Override
 		public int hashCode() {
 			return name.hashCode();
+		}
+		
+		public String getActualName() {
+			return actualName;
+		}
+		public boolean isFrom() {
+			return from;
 		}
 		
 	}

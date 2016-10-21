@@ -4,6 +4,27 @@
 
 #panService .scroll-pane, .interface {
 	-fx-background-color: #FFFFFF;
+	-fx-border-width: 0px;
+}
+
+.interfaceContainer {
+	-fx-border-style: solid;
+	-fx-border-color: #CCCCCC;
+	-fx-border-width: 1px !important;
+}
+
+.treeContainer {
+	-fx-background-color: #FFFFFF;
+	-fx-border-style: solid;
+	-fx-border-color: #CCCCCC;
+	-fx-border-width: 0px;
+}
+
+.treeLeftContainer {
+	-fx-border-width: 1px 0px 1px 1px !important;
+}
+.treeRightContainer {
+	-fx-border-width: 1px 1px 1px 0px !important;
 }
 
 .maskLine {
@@ -25,13 +46,8 @@
 	-fx-text-fill: #AAAAAA;
 }
 
-.invokeWrapper {
-	-fx-border-style: solid;
-	-fx-border-color: #CCCCCC;
-}
-
 .invokeName {
 	-fx-border-style: solid;
-	-fx-border-width: 0px 0px 1px 0px;
+	-fx-border-width: 1px 1px 0px 1px;
 	-fx-border-color: #CCCCCC;
 }
