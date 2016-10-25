@@ -28,6 +28,7 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
@@ -286,6 +287,15 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Finally.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Throw.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Break.class));
+		
+		TextField search = new TextField();
+		search.textProperty().addListener(new ChangeListener<String>() {
+			@Override
+			public void changed(ObservableValue<? extends String> arg0, String arg1, String arg2) {
+				highlight(arg2);
+			}
+		});
+		serviceController.getHbxButtons().getChildren().add(search);
 
 		serviceController.getPanService().getChildren().add(serviceTree);
 		
@@ -705,6 +715,58 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 		return serviceController;
+	}
+	
+	public void highlight(String text) {
+		highlight(serviceTree.rootProperty().get(), text);
+	}
+	
+	private void highlight(TreeItem<Step> item, String text) {
+		TreeCell<Step> cell = serviceTree.getTreeCell(item);
+		cell.getCellValue().getNode().getStyleClass().remove("highlightedStep");
+		if (text != null && !text.trim().isEmpty() && matches(item.itemProperty().get(), text, false)) {
+			cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+		}
+		if (item.getChildren() != null && !item.getChildren().isEmpty()) {
+			for (TreeItem<Step> child : item.getChildren()) {
+				highlight(child, text);
+			}
+		}
+		// children but none of them are shown in the tree
+		else if (text != null && !text.trim().isEmpty() && item.itemProperty().get() instanceof StepGroup && matches(item.itemProperty().get(), text, true)) {
+			cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+		}
+	}
+	
+	private static boolean matches(Step step, String text, boolean recursive) {
+		String regex = "(?i).*" + text + ".*";
+		if (step.getId() != null && step.getId().equals(text)) {
+			return true;
+		}
+		else if (step.getComment() != null && step.getComment().matches(regex)) {
+			return true;
+		}
+		else if (step instanceof Link) {
+			if (((Link) step).getFrom().matches(regex)) {
+				return true;
+			}
+			else if (((Link) step).getTo().matches(regex)) {
+				return true;
+			}
+		}
+		else if (step instanceof Invoke) {
+			if (((Invoke) step).getServiceId().matches(regex)) {
+				return true;
+			}
+		}
+		if (recursive && step instanceof StepGroup) {
+			for (Step child : ((StepGroup) step).getChildren()) {
+				if (matches(child, text, recursive)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 	
 	private InvokeWrapper drawInvoke(MainController controller, final Invoke invoke, java.util.Map<String, InvokeWrapper> invokeWrappers, VMServiceController serviceController, VMService service, Tree<Step> serviceTree) {

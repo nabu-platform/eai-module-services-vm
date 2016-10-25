@@ -51,3 +51,7 @@
 	-fx-border-width: 1px 1px 0px 1px;
 	-fx-border-color: #CCCCCC;
 }
+
+.highlightedStep {
+	-fx-background-color: #fff8b0;
+}
