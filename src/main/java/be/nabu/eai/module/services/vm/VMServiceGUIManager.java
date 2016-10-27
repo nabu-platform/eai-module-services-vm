@@ -759,6 +759,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				return true;
 			}
 		}
+		else if (step instanceof Throw) {
+			if (((Throw) step).getCode().matches(regex)) {
+				return true;
+			}
+			else if (((Throw) step).getMessage().matches(regex)) {
+				return true;
+			}
+		}
 		if (recursive && step instanceof StepGroup) {
 			for (Step child : ((StepGroup) step).getChildren()) {
 				if (matches(child, text, recursive)) {
