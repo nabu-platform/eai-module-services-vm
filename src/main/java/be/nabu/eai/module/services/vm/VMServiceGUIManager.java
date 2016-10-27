@@ -746,6 +746,19 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		else if (step.getComment() != null && step.getComment().matches(regex)) {
 			return true;
 		}
+		else if (step instanceof For) {
+			if (((For) step).getQuery().matches(regex)) {
+				return true;
+			}
+			else if (((For) step).getVariable().matches(regex)) {
+				return true;
+			}
+		}
+		else if (step instanceof Sequence) {
+			if (((Sequence) step).getTransactionVariable().matches(regex)) {
+				return true;
+			}
+		}
 		else if (step instanceof Link) {
 			if (((Link) step).getFrom().matches(regex)) {
 				return true;
@@ -764,6 +777,11 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				return true;
 			}
 			else if (((Throw) step).getMessage().matches(regex)) {
+				return true;
+			}
+		}
+		else if (step instanceof Switch) {
+			if (((Switch) step).getQuery().matches(regex)) {
 				return true;
 			}
 		}
