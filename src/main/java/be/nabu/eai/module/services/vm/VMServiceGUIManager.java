@@ -274,7 +274,12 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				}
 				else if (event.getCode() == KeyCode.E && event.isControlDown()) {
 					TreeCell<Step> selectedItem = serviceTree.getSelectionModel().getSelectedItem();
-					selectedItem.expandAll();
+					if (event.isShiftDown()) {
+						selectedItem.expandedProperty().set(true);
+					}
+					else {
+						selectedItem.expandAll();
+					}
 				}
 			}
 		});
@@ -726,6 +731,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		cell.getCellValue().getNode().getStyleClass().remove("highlightedStep");
 		if (text != null && !text.trim().isEmpty() && matches(item.itemProperty().get(), text, false)) {
 			cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+			cell.show();
 		}
 		if (item.getChildren() != null && !item.getChildren().isEmpty()) {
 			for (TreeItem<Step> child : item.getChildren()) {
@@ -735,6 +741,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		// children but none of them are shown in the tree
 		else if (text != null && !text.trim().isEmpty() && item.itemProperty().get() instanceof StepGroup && matches(item.itemProperty().get(), text, true)) {
 			cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+			cell.show();
 		}
 	}
 	
@@ -747,41 +754,41 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			return true;
 		}
 		else if (step instanceof For) {
-			if (((For) step).getQuery().matches(regex)) {
+			if (((For) step).getQuery() != null && ((For) step).getQuery().matches(regex)) {
 				return true;
 			}
-			else if (((For) step).getVariable().matches(regex)) {
+			else if (((For) step).getVariable() != null && ((For) step).getVariable().matches(regex)) {
 				return true;
 			}
 		}
 		else if (step instanceof Sequence) {
-			if (((Sequence) step).getTransactionVariable().matches(regex)) {
+			if (((Sequence) step).getTransactionVariable() != null && ((Sequence) step).getTransactionVariable().matches(regex)) {
 				return true;
 			}
 		}
 		else if (step instanceof Link) {
-			if (((Link) step).getFrom().matches(regex)) {
+			if (((Link) step).getFrom() != null && ((Link) step).getFrom().matches(regex)) {
 				return true;
 			}
-			else if (((Link) step).getTo().matches(regex)) {
+			else if (((Link) step).getTo() != null && ((Link) step).getTo().matches(regex)) {
 				return true;
 			}
 		}
 		else if (step instanceof Invoke) {
-			if (((Invoke) step).getServiceId().matches(regex)) {
+			if (((Invoke) step).getServiceId() != null && ((Invoke) step).getServiceId().matches(regex)) {
 				return true;
 			}
 		}
 		else if (step instanceof Throw) {
-			if (((Throw) step).getCode().matches(regex)) {
+			if (((Throw) step).getCode() != null && ((Throw) step).getCode().matches(regex)) {
 				return true;
 			}
-			else if (((Throw) step).getMessage().matches(regex)) {
+			else if (((Throw) step).getMessage() != null && ((Throw) step).getMessage().matches(regex)) {
 				return true;
 			}
 		}
 		else if (step instanceof Switch) {
-			if (((Switch) step).getQuery().matches(regex)) {
+			if (((Switch) step).getQuery() != null && ((Switch) step).getQuery().matches(regex)) {
 				return true;
 			}
 		}
