@@ -142,6 +142,8 @@ public class FixedValue {
 				this.property = new SimpleProperty("Fixed Value", type instanceof SimpleType ? ((SimpleType) type).getInstanceClass() : String.class, false);
 			}
 			this.property.setEvaluatable(true);
+			
+			this.property.getAdditional().addAll(Arrays.asList(element.getProperties()));
 		}
 		
 		@Override
