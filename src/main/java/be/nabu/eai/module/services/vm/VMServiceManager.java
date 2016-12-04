@@ -72,6 +72,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		Sequence sequence = parseSequence(new ResourceReadableContainer((ReadableResource) EAIRepositoryUtils.getResource(entry, "service.xml", false)));
 		
 		SimpleVMServiceDefinition definition = new SimpleVMServiceDefinition(pipeline);
+		definition.setExecutorProvider(new RepositoryExecutorProvider(entry.getRepository()));
 		definition.setRoot(sequence);
 		definition.setId(entry.getId());
 		return definition;

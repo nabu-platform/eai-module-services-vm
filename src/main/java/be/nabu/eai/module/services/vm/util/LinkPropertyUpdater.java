@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.module.services.vm.VMServiceGUIManager;
@@ -113,6 +114,7 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 				mapping.removeStyleClass("indexQueryLine");
 			}
 		}
+		MainController.getInstance().setChanged();
 		return new ArrayList<ValidationMessage>();
 	}
 	

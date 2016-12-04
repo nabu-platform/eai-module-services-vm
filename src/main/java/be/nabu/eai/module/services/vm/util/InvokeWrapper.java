@@ -8,7 +8,6 @@ import java.util.Set;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
-import javafx.geometry.Bounds;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -22,9 +21,11 @@ import be.nabu.eai.developer.MainController.PropertyUpdater;
 import be.nabu.eai.developer.controllers.VMServiceController;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
 import be.nabu.eai.developer.managers.util.ElementMarshallable;
+import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.util.ElementClipboardHandler;
 import be.nabu.eai.developer.util.ElementTreeItem;
+import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
@@ -36,6 +37,7 @@ import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Link;
 import be.nabu.libs.services.vm.step.Map;
+import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.api.VMService;
@@ -54,6 +56,7 @@ public class InvokeWrapper {
 	private VMServiceController serviceController;
 	private Tree<Element<?>> input, output;
 	private MainController controller;
+	private ExecutorProvider executorProvider;
 
 	public InvokeWrapper(MainController controller, Invoke invoke, Pane target, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings) {
 		this.controller = controller;
@@ -63,6 +66,7 @@ public class InvokeWrapper {
 		this.serviceTree = serviceTree;
 		this.serviceController = serviceController;
 		this.mappings = mappings;
+		this.executorProvider = new RepositoryExecutorProvider(controller.getRepository());
 	}
 	
 	public Pane getComponent() {
@@ -104,12 +108,18 @@ public class InvokeWrapper {
 				}
 			}
 		});
+		// the input & output should not be scrollable but should resize on demand
+		final Service service = invoke.getService(controller.getRepository().getServiceContext());
+		
 		pane.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent arg0) {
 				pane.requestFocus();
 				SimpleProperty<Integer> invocationProperty = new SimpleProperty<Integer>("invocationOrder", Integer.class, true);
-				HashSet<Property<?>> hashSet = new HashSet<Property<?>>(Arrays.asList(invocationProperty));
+				EnumeratedSimpleProperty<String> targetProperty = new EnumeratedSimpleProperty<String>("target", String.class, false);
+				SimpleProperty<Boolean> asynchronousProperty = new SimpleProperty<Boolean>("asynchronous", Boolean.class, false);
+				targetProperty.addAll("$self", "$any", "$all", "$other");
+				HashSet<Property<?>> hashSet = new HashSet<Property<?>>(Arrays.asList(invocationProperty, targetProperty, asynchronousProperty));
 				PropertyUpdater updater = new PropertyUpdater() {
 					@Override
 					public Set<Property<?>> getSupportedProperties() {
@@ -117,7 +127,11 @@ public class InvokeWrapper {
 					}
 					@Override
 					public Value<?>[] getValues() {
-						return new Value<?> [] { new ValueImpl<Integer>(invocationProperty, invoke.getInvocationOrder()) };
+						return new Value<?> [] { 
+							new ValueImpl<Integer>(invocationProperty, invoke.getInvocationOrder()),
+							new ValueImpl<String>(targetProperty, invoke.getTarget()),
+							new ValueImpl<Boolean>(asynchronousProperty, invoke.isAsynchronous())
+						};
 					}
 					@Override
 					public boolean canUpdate(Property<?> property) {
@@ -128,6 +142,23 @@ public class InvokeWrapper {
 						if (value instanceof Integer && property.equals(invocationProperty)) {
 							invoke.setInvocationOrder((Integer) value);
 						}
+						else if (property.equals(asynchronousProperty)) {
+							invoke.setAsynchronous(value instanceof Boolean && (Boolean) value);
+						}
+						else if (property.equals(targetProperty)) {
+							String oldValue = invoke.getTarget();
+							invoke.setTarget(value == null ? null : value.toString());
+							if (executorProvider.isBatch(oldValue) != executorProvider.isBatch(invoke.getTarget())) {
+								if (executorProvider.isBatch(invoke.getTarget())) {
+									output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
+								}
+								else {
+									output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
+								}
+								output.refresh();
+							}
+						}
+						MainController.getInstance().setChanged();
 						return invoke.getParent() instanceof Map ? ((Map) invoke.getParent()).calculateInvocationOrder() : null;
 					}
 					@Override
@@ -148,8 +179,7 @@ public class InvokeWrapper {
 		invokeLevelLabel.getStyleClass().add("invokeOrder");
 		name.getChildren().addAll(invokeLevelLabel, nameLabel);
 		vbox.getChildren().add(name);
-		// the input & output should not be scrollable but should resize on demand
-		Service service = invoke.getService(controller.getRepository().getServiceContext());
+		
 		vbox.getStyleClass().add("service");
 		if (service != null) {
 			input = new Tree<Element<?>>(new ElementMarshallable());
@@ -162,7 +192,12 @@ public class InvokeWrapper {
 			
 			output = new Tree<Element<?>>(new ElementMarshallable());
 			output.setClipboardHandler(new ElementClipboardHandler(output, false));
-			output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
+			if (executorProvider.isBatch(invoke.getTarget())) {
+				output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
+			}
+			else {
+				output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
+			}
 			output.getTreeCell(output.rootProperty().get()).expandedProperty().set(false);
 			output.set("invoke", invoke);
 			output.getRootCell().getNode().getStyleClass().add("invokeTree");
