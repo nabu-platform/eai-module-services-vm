@@ -753,6 +753,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		else if (step.getComment() != null && step.getComment().matches(regex)) {
 			return true;
 		}
+		else if (step.getLabel() != null && step.getLabel().matches(regex)) {
+			return true;
+		}
 		else if (step instanceof For) {
 			if (((For) step).getQuery() != null && ((For) step).getQuery().matches(regex)) {
 				return true;
