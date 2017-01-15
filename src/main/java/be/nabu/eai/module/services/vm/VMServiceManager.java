@@ -222,7 +222,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 			if (newPath.startsWith(typeName + "/")) {
 				newPath = newPath.substring(typeName.length() + 1);
 			}
-			return updateVariableName(artifact, (Type) impactedArtifact, oldPath, newPath, artifact.getPipeline(), null);
+			return updateVariableName(artifact, (Type) impactedArtifact, oldPath, newPath, artifact.getPipeline(), null, new ArrayList<Type>());
 		}
 		// if we update the spec of a service, we may need to redraw some mappings
 		else if (impactedArtifact instanceof DefinedService && (oldPath.startsWith("input") || oldPath.startsWith("output"))) {
@@ -231,7 +231,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		return false;
 	}
 	
-	private static boolean updateVariableName(VMService artifact, Type impactedArtifact, String oldPath, String newPath, ComplexType currentType, String currentPath) {
+	private static boolean updateVariableName(VMService artifact, Type impactedArtifact, String oldPath, String newPath, ComplexType currentType, String currentPath, List<Type> blacklisted) {
 		boolean updated = false;
 		System.out.println("CHECKING " + currentType + " == " + impactedArtifact);
 		// any links from this path are impacted
@@ -241,10 +241,11 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 			System.out.println("FOUND IMPACTED:" + currentPath + " > " + relativeOldPath + " > " + relativeNewPath);
 			updated = updateVariableName(artifact, relativeOldPath, relativeNewPath);
 		}
+		blacklisted.add(currentType);
 		for (Element<?> element : TypeUtils.getAllChildren(currentType)) {
-			if (element.getType() instanceof ComplexType) {
+			if (element.getType() instanceof ComplexType && !blacklisted.contains(element.getType())) {
 				String childPath = currentPath == null ? element.getName() : currentPath + "/" + element.getName();
-				updated |= updateVariableName(artifact, impactedArtifact, oldPath, newPath, (ComplexType) element.getType(), childPath);
+				updated |= updateVariableName(artifact, impactedArtifact, oldPath, newPath, (ComplexType) element.getType(), childPath, blacklisted);
 			}
 		}
 		return updated;
