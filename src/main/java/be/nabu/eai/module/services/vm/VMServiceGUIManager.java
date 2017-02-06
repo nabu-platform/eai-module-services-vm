@@ -16,6 +16,8 @@ import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -35,6 +37,7 @@ import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.AnchorPane;
@@ -57,10 +60,12 @@ import be.nabu.eai.developer.managers.util.MovablePane;
 import be.nabu.eai.developer.managers.util.RootElementWithPush;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.managers.util.SimplePropertyUpdater;
+import be.nabu.eai.developer.util.Confirm;
 import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.eai.developer.util.ElementClipboardHandler;
 import be.nabu.eai.developer.util.ElementSelectionListener;
 import be.nabu.eai.developer.util.ElementTreeItem;
+import be.nabu.eai.developer.util.Confirm.ConfirmType;
 import be.nabu.eai.module.services.vm.util.DropLinkListener;
 import be.nabu.eai.module.services.vm.util.DropWrapper;
 import be.nabu.eai.module.services.vm.util.FixedValue;
@@ -109,6 +114,7 @@ import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.step.Switch;
 import be.nabu.libs.services.vm.step.Throw;
 import be.nabu.libs.types.ParsedPath;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.properties.ValidateProperty;
@@ -127,6 +133,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	}
 	
 	private boolean disablePipelineEditing;
+	
+	private ObjectProperty<TreeCell<Element<?>>> lastSelectedInputElement = new SimpleObjectProperty<TreeCell<Element<?>>>();
+	private ObjectProperty<TreeCell<Element<?>>> lastSelectedOutputElement = new SimpleObjectProperty<TreeCell<Element<?>>>();
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -540,6 +549,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				}
 				// if the new selection is a map, draw everything
 				if (arg2.getItem().itemProperty().get() instanceof Map) {
+					// reset the last selected element
+					lastSelectedInputElement.set(null);
+					lastSelectedOutputElement.set(null);
+					
 					leftTree = buildLeftPipeline(controller, serviceController, (Map) arg2.getItem().itemProperty().get());
 					rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, (Map) arg2.getItem().itemProperty().get());
 					
@@ -719,6 +732,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				}
 			}
 		});
+		serviceController.getPanMap().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+			@Override
+			public void handle(KeyEvent event) {
+				if (event.getCode() == KeyCode.D && event.isControlDown() && lastSelectedInputElement.get() != null && lastSelectedOutputElement.get() != null) {
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), event.isShiftDown());
+				}
+			}
+		});
 		return serviceController;
 	}
 	
@@ -828,6 +849,24 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		});
 		FixedValue.allowFixedValue(controller, fixedValues, serviceTree, invokeWrapper.getInput());
 		
+		// we can draw lines from it
+		invokeWrapper.getOutput().getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Element<?>>>() {
+			@Override
+			public void changed(ObservableValue<? extends TreeCell<Element<?>>> arg0, TreeCell<Element<?>> arg1, TreeCell<Element<?>> arg2) {
+				if (arg2 != null) {
+					lastSelectedInputElement.set(arg2);
+				}
+			}
+		});
+		invokeWrapper.getInput().getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Element<?>>>() {
+			@Override
+			public void changed(ObservableValue<? extends TreeCell<Element<?>>> arg0, TreeCell<Element<?>> arg1, TreeCell<Element<?>> arg2) {
+				if (arg2 != null) {
+					lastSelectedOutputElement.set(arg2);
+				}
+			}
+		});
+		
 		resizeIfTooBig(invokeWrapper, pane, serviceController);
 		return invokeWrapper;
 	}
@@ -923,6 +962,48 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
+	private void link(VMService service, VMServiceController serviceController, TreeCell<Element<?>> from, TreeCell<Element<?>> to, boolean mask) {
+		boolean alreadyMapped = false;
+		for (Mapping mapping : mappings.values()) {
+			if (mapping.getFrom().equals(from) && mapping.getTo().equals(to)) {
+				alreadyMapped = true;
+				break;
+			}
+		}
+		if (!alreadyMapped) {
+			Element<?> fromElement = from.getItem().itemProperty().get();
+			Element<?> toElement = to.getItem().itemProperty().get();
+			// if we can straight map it, do that
+			if (service.isMappable(fromElement, toElement) || (fromElement.getType() instanceof ComplexType && toElement.getType() instanceof ComplexType && mask)) {
+				DropLinkListener.drawMapping(serviceController, serviceTree, mappings, to, from, mask);
+			}
+			// if they are both complex types, we can do a best effort mapping by name
+			else if (fromElement.getType() instanceof ComplexType && toElement.getType() instanceof ComplexType) {
+				Confirm.confirm(ConfirmType.QUESTION, "Map recursively", "Should a recursive mapping be attempted for '" + fromElement.getName() + "'?", new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent arg0) {
+						java.util.Map<String, TreeCell<Element<?>>> toFields = new HashMap<String, TreeCell<Element<?>>>();
+						for (TreeItem<Element<?>> child : to.getItem().getChildren()) {
+							TreeCell<Element<?>> cell = to.getCell(child);
+							if (cell != null) {
+								toFields.put(child.itemProperty().get().getName(), cell);
+							}
+						}
+						for (TreeItem<Element<?>> child : from.getItem().getChildren()) {
+							TreeCell<Element<?>> cell = from.getCell(child);
+							if (cell != null) {
+								TreeCell<Element<?>> target = toFields.get(child.itemProperty().get().getName());
+								if (target != null) {
+									link(service, serviceController, cell, target, mask);
+								}
+							}
+						}
+					}
+				});
+			}
+		}
+	}
+	
 	private Tree<Element<?>> buildRightPipeline(MainController controller, VMService service, Tree<Step> serviceTree, VMServiceController serviceController, StepGroup step) {
 		// remove listeners
 		if (rightTree != null) {
@@ -935,12 +1016,32 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		try {
 			// drop button was added afterwards, hence the mess
 			DropButton dropButton = new DropButton(step);
+			// this button was added even later!
+			Button linkButton = new Button();
+			linkButton.setGraphic(MainController.loadGraphic(getIcon(Map.class)));
+			linkButton.disableProperty().bind(lastSelectedInputElement.isNull().or(lastSelectedOutputElement.isNull()));
+			linkButton.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(MouseEvent arg0) {
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), arg0.getButton() == MouseButton.SECONDARY);
+				}
+			});
+			
 			Tree<Element<?>> rightTree = structureManager.display(controller, right, new RootElementWithPush(
 				(Structure) step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()), 
 				false,
 				step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()).getProperties()
-			), !disablePipelineEditing, true, dropButton);
+			), !disablePipelineEditing, true, linkButton, dropButton);
 			dropButton.setTree(rightTree);
+			
+			rightTree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Element<?>>>() {
+				@Override
+				public void changed(ObservableValue<? extends TreeCell<Element<?>>> arg0, TreeCell<Element<?>> arg1, TreeCell<Element<?>> arg2) {
+					if (arg2 != null) {
+						lastSelectedOutputElement.set(arg2);
+					}
+				}
+			});
 		
 			// make sure the "input" & "output" are not editable
 			for (TreeItem<Element<?>> item : rightTree.rootProperty().get().getChildren()) {
@@ -989,6 +1090,16 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		), null, false, false));
 		// show properties if selected
 		leftTree.getSelectionModel().selectedItemProperty().addListener(new ElementSelectionListener(controller, false));
+		
+		leftTree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Element<?>>>() {
+			@Override
+			public void changed(ObservableValue<? extends TreeCell<Element<?>>> arg0, TreeCell<Element<?>> arg1, TreeCell<Element<?>> arg2) {
+				if (arg2 != null) {
+					lastSelectedInputElement.set(arg2);
+				}
+			}
+		});
+		
 		// add first to get parents right
 		serviceController.getPanLeft().getChildren().add(leftTree);
 		
