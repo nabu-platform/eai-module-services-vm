@@ -23,6 +23,7 @@ import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
 import be.nabu.eai.developer.managers.util.ElementMarshallable;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
+import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.eai.developer.util.ElementClipboardHandler;
 import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
@@ -183,6 +184,7 @@ public class InvokeWrapper {
 		vbox.getStyleClass().add("service");
 		if (service != null) {
 			input = new Tree<Element<?>>(new ElementMarshallable());
+			EAIDeveloperUtils.addElementExpansionHandler(input);
 			input.setClipboardHandler(new ElementClipboardHandler(input, false));
 			input.set("invoke", invoke);
 			input.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getInputDefinition(), "input"), null, false, false));
@@ -191,6 +193,7 @@ public class InvokeWrapper {
 			input.getRootCell().getNode().getStyleClass().add("invokeTree");
 			
 			output = new Tree<Element<?>>(new ElementMarshallable());
+			EAIDeveloperUtils.addElementExpansionHandler(output);
 			output.setClipboardHandler(new ElementClipboardHandler(output, false));
 			if (executorProvider.isBatch(invoke.getTarget())) {
 				output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));

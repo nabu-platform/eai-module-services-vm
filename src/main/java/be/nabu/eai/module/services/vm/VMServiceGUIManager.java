@@ -1083,6 +1083,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			outputTree.removeRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 		}
 		Tree<Element<?>> leftTree = new Tree<Element<?>>(new ElementMarshallable());
+		EAIDeveloperUtils.addElementExpansionHandler(leftTree);
 		leftTree.rootProperty().set(new ElementTreeItem(new RootElementWithPush(
 			(Structure) step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()),
 			false,

@@ -300,9 +300,15 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				String rewrittenFrom;
 				if (originalFrom != null) {
 					if (!originalFrom.startsWith("=")) {
-						ParsedPath parsed = new ParsedPath(originalFrom);
-						rewrite(parsed, oldPath, newPath);
-						rewrittenFrom = parsed.toString();
+						// if the input is a fixed value and does not start with a "=", it can not contain references, do not rewrite
+						if (((Link) step).isFixedValue()) {
+							rewrittenFrom = originalFrom;
+						}
+						else {
+							ParsedPath parsed = new ParsedPath(originalFrom);
+							rewrite(parsed, oldPath, newPath);
+							rewrittenFrom = parsed.toString();
+						}
 					}
 					else {
 						rewrittenFrom = "=" + rewriteQuery(originalFrom.substring(1), oldPath, newPath);
@@ -396,6 +402,10 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				rewrite(pathToRewrite.getChildPath(), oldPath.getChildPath(), newPath.getChildPath());
 			}
 		}
+	}
+	
+	public static void main(String...args) {
+		System.out.println(rewriteQuery("0 - input/doc/unnamed0 * -1", new ParsedPath("input/doc/haha"), new ParsedPath("input/doc/test")));
 	}
 	
 	private static String rewriteQuery(String query, ParsedPath oldPath, ParsedPath newPath) {
