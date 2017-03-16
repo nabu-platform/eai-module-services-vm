@@ -132,6 +132,11 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
+	public static interface ServiceAcceptor {
+		public boolean accept(String serviceId);
+	}
+	
+	private ServiceAcceptor serviceInvokeAcceptor;
 	private boolean disablePipelineEditing;
 	
 	private ObjectProperty<TreeCell<Element<?>>> lastSelectedInputElement = new SimpleObjectProperty<TreeCell<Element<?>>>();
@@ -693,7 +698,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						// this will be the path in the tree
 						if (content != null) {
 							String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
-							if (serviceId != null) {
+							if (serviceId != null && (serviceInvokeAcceptor == null || serviceInvokeAcceptor.accept(serviceId))) {
 								event.acceptTransferModes(TransferMode.MOVE);
 								event.consume();
 							}
@@ -713,7 +718,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						// this will be the path in the tree
 						if (content != null) {
 							String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
-							if (serviceId != null) {
+							if (serviceId != null && (serviceInvokeAcceptor == null || serviceInvokeAcceptor.accept(serviceId))) {
 								Invoke invoke = new Invoke();
 								invoke.setParent(target);
 								invoke.setServiceId(serviceId);
