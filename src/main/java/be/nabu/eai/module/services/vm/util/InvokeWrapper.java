@@ -112,6 +112,16 @@ public class InvokeWrapper {
 		// the input & output should not be scrollable but should resize on demand
 		final Service service = invoke.getService(controller.getRepository().getServiceContext());
 		
+		ChangeListener<Boolean> toFrontListener = new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> arg0, Boolean arg1, Boolean arg2) {
+				if (arg2 != null && arg2) {
+					pane.toFront();
+				}
+			}
+		};
+		pane.focusedProperty().addListener(toFrontListener);
+		
 		pane.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent arg0) {
