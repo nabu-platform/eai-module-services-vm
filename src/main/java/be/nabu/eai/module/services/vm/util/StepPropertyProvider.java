@@ -41,6 +41,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 		Set<Property<?>> properties = new LinkedHashSet<Property<?>>();
 		properties.add(new CommentProperty());
 		properties.add(new LabelProperty());
+		properties.add(new StepNameProperty());
 		if (step instanceof Break) {
 			properties.add(new BreakCountProperty());
 		}
@@ -62,7 +63,6 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
-			properties.add(new StepProperty());
 		}
 		return properties;
 	}
@@ -72,6 +72,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 		List<Value<?>> values = new ArrayList<Value<?>>();
 		values.add(new ValueImpl<String>(new CommentProperty(), step.getComment()));
 		values.add(new ValueImpl<String>(new LabelProperty(), step.getLabel()));
+		values.add(new ValueImpl<String>(new StepNameProperty(), step.getName()));
 		if (step instanceof Break) {
 			values.add(new ValueImpl<Integer>(new BreakCountProperty(), ((Break) step).getCount()));
 		}
@@ -100,7 +101,6 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
-			values.add(new ValueImpl<String>(new StepProperty(), ((Sequence) step).getStep()));
 		}
 		return values.toArray(new Value[0]);
 	}
@@ -119,6 +119,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (property instanceof LabelProperty) {
 			step.setLabel((String) value);
+		}
+		else if (property instanceof StepNameProperty) {
+			step.setName((String) value);
 		}
 		else if (step instanceof Break) {
 			((Break) step).setCount(value == null ? 1 : (Integer) value);
@@ -177,9 +180,6 @@ public class StepPropertyProvider implements PropertyUpdater {
 					ElementTreeItem.renameVariable(MainController.getInstance(), ((Sequence) step).getTransactionVariable(), (String) value);
 				}
 				((Sequence) step).setTransactionVariable((String) value);
-			}
-			else if (property instanceof StepProperty) {
-				((Sequence) step).setStep((String) value);
 			}
 		}
 		cell.refresh();
@@ -262,7 +262,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 	}
 
-	public static class StepProperty extends BaseProperty<String> {
+	public static class StepNameProperty extends BaseProperty<String> {
 		@Override
 		public String getName() {
 			return "step";

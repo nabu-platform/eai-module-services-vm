@@ -1198,6 +1198,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		@Override
 		public String marshal(Step step) {
 			String specific = "";
+			if (step.getName() != null) {
+				specific = ": " + step.getName();
+			}
 			if (step instanceof For) {
 				specific = " each " + ((For) step).getVariable() + " in " + ((For) step).getQuery();
 			}
@@ -1213,11 +1216,6 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				}
 				if (((Throw) step).getMessage() != null) {
 					specific = ": " + ((Throw) step).getMessage();
-				}
-			}
-			else if (step instanceof Sequence) {
-				if (((Sequence) step).getStep() != null) {
-					specific = ": " + ((Sequence) step).getStep();
 				}
 			}
 			String label = step.getLabel() != null ? step.getLabel() + ": " : "";
