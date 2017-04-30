@@ -1198,9 +1198,6 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		@Override
 		public String marshal(Step step) {
 			String specific = "";
-			if (step.getName() != null) {
-				specific = ": " + step.getName();
-			}
 			if (step instanceof For) {
 				specific = " each " + ((For) step).getVariable() + " in " + ((For) step).getQuery();
 			}
@@ -1241,10 +1238,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					comment = invoke.getServiceId();
 				}
 			}
-			return label + step.getClass().getSimpleName() + specific + (comment != null ? " (" + comment + ")" : "");
+			return label + (step.getName() == null ? step.getClass().getSimpleName() : step.getName()) + specific + (comment != null ? " (" + comment + ")" : "");
 		}
 	}
-
+	
 	private class ServiceAddHandler implements EventHandler<Event> {
 		private Tree<Step> tree;
 		private Class<? extends Step> step;
