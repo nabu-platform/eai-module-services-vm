@@ -13,9 +13,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
@@ -26,8 +24,10 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TextField;
@@ -43,6 +43,10 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.api.ArtifactGUIInstance;
 import be.nabu.eai.developer.api.ConfigurableGUIManager;
@@ -52,6 +56,8 @@ import be.nabu.eai.developer.api.PortableArtifactGUIManager;
 import be.nabu.eai.developer.api.ValidationSelectableArtifactGUIManager;
 import be.nabu.eai.developer.components.RepositoryBrowser;
 import be.nabu.eai.developer.controllers.VMServiceController;
+import be.nabu.eai.developer.events.ArtifactMoveEvent;
+import be.nabu.eai.developer.events.VariableRenameEvent;
 import be.nabu.eai.developer.managers.ServiceGUIManager;
 import be.nabu.eai.developer.managers.util.DoubleAmountListener;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
@@ -61,11 +67,11 @@ import be.nabu.eai.developer.managers.util.RootElementWithPush;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.managers.util.SimplePropertyUpdater;
 import be.nabu.eai.developer.util.Confirm;
+import be.nabu.eai.developer.util.Confirm.ConfirmType;
 import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.eai.developer.util.ElementClipboardHandler;
 import be.nabu.eai.developer.util.ElementSelectionListener;
 import be.nabu.eai.developer.util.ElementTreeItem;
-import be.nabu.eai.developer.util.Confirm.ConfirmType;
 import be.nabu.eai.module.services.vm.util.DropLinkListener;
 import be.nabu.eai.module.services.vm.util.DropWrapper;
 import be.nabu.eai.module.services.vm.util.FixedValue;
@@ -79,7 +85,9 @@ import be.nabu.eai.module.services.vm.util.StepTreeItem;
 import be.nabu.eai.module.types.structure.StructureGUIManager;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.jfx.control.tree.Marshallable;
 import be.nabu.jfx.control.tree.Tree;
@@ -88,6 +96,8 @@ import be.nabu.jfx.control.tree.TreeItem;
 import be.nabu.jfx.control.tree.drag.TreeDragDrop;
 import be.nabu.jfx.control.tree.drag.TreeDragListener;
 import be.nabu.jfx.control.tree.drag.TreeDropListener;
+import be.nabu.libs.evaluator.QueryParser;
+import be.nabu.libs.evaluator.QueryPart;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
@@ -114,8 +124,11 @@ import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.step.Switch;
 import be.nabu.libs.services.vm.step.Throw;
 import be.nabu.libs.types.ParsedPath;
+import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.types.api.ModifiableComplexType;
+import be.nabu.libs.types.base.ElementImpl;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.properties.ValidateProperty;
 import be.nabu.libs.types.structure.Structure;
@@ -129,6 +142,122 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		URL resource = VMServiceGUIManager.class.getClassLoader().getResource("vmservice.css");
 		if (resource != null) {
 			MainController.registerStyleSheet(resource.toExternalForm());
+		}
+	}
+	
+	public static List<Element<?>> removeUnusedElements(VMService service) throws ParseException {
+		List<Element<?>> unusedPipelineElements = getUnusedPipelineElements(service);
+		if (!unusedPipelineElements.isEmpty()) {
+			for (Element<?> element : unusedPipelineElements) {
+				service.getPipeline().remove(element);
+				((ModifiableComplexType) service.getPipeline().get(Pipeline.INPUT).getType()).remove(element);
+				((ModifiableComplexType) service.getPipeline().get(Pipeline.OUTPUT).getType()).remove(element);
+			}
+		}
+		return unusedPipelineElements;
+	}
+	
+	public static List<Element<?>> getUnusedPipelineElements(VMService service) throws ParseException {
+		// initially add all elements, remove them if used
+		List<Element<?>> elements = new ArrayList<Element<?>>(TypeUtils.getAllChildren(service.getPipeline()));
+		// remove the inputs and outputs from that list
+		Iterator<Element<?>> iterator = elements.iterator();
+		while (iterator.hasNext()) {
+			Element<?> next = iterator.next();
+			if (next.getName().equals("input") || next.getName().equals("output")) {
+				iterator.remove();
+			}
+		}
+		List<Element<?>> inputs = new ArrayList<Element<?>>(TypeUtils.getAllChildren((ComplexType) service.getPipeline().get(Pipeline.INPUT).getType()));
+		List<Element<?>> outputs = new ArrayList<Element<?>>(TypeUtils.getAllChildren((ComplexType) service.getPipeline().get(Pipeline.OUTPUT).getType()));
+		removeUsedPipelineElements(elements, inputs, outputs, service.getRoot());
+		// add the remaining inputs and outputs that are unused as well
+		elements.addAll(inputs);
+		elements.addAll(outputs);
+		return elements;
+	}
+	
+	private static void removeUsedPipelineElements(List<Element<?>> elements, List<Element<?>> inputs, List<Element<?>> outputs, Step step) throws ParseException {
+		if (step instanceof Link) {
+			if (((Link) step).isFixedValue() && ((Link) step).getFrom().startsWith("=")) {
+				ParsedPath from = new ParsedPath(((Link) step).getFrom().substring(1));
+				removeUsedPipelineElements(elements, inputs, outputs, from, true);
+			}
+			else if (!((Link) step).isFixedValue()) {
+				ParsedPath from = new ParsedPath(((Link) step).getFrom());
+				removeUsedPipelineElements(elements, inputs, outputs, from, true);
+			}
+			ParsedPath to = new ParsedPath(((Link) step).getTo());
+			removeUsedPipelineElements(elements, inputs, outputs, to, true);
+		}
+		if (step.getLabel() != null) {
+			removeUsedPipelineElements(elements, inputs, outputs, step.getLabel());
+		}
+		if (step instanceof For) {
+			String query = ((For) step).getQuery();
+			if (query != null) {
+				removeUsedPipelineElements(elements, inputs, outputs, query);
+			}
+		}
+		if (step instanceof Throw) {
+			String message = ((Throw) step).getMessage();
+			if (message != null && message.startsWith("=")) {
+				removeUsedPipelineElements(elements, inputs, outputs, message.substring(1));
+			}
+		}
+		if (step instanceof Switch) {
+			String query = ((Switch) step).getQuery();
+			if (query != null) {
+				removeUsedPipelineElements(elements, inputs, outputs, query);
+			}
+		}
+		// recurse
+		if (step instanceof StepGroup) {
+			for (Step child : ((StepGroup) step).getChildren()) {
+				removeUsedPipelineElements(elements, inputs, outputs, child);
+			}
+		}
+	}
+	
+	private static void removeUsedPipelineElements(List<Element<?>> elements, List<Element<?>> inputs, List<Element<?>> outputs, ParsedPath path, boolean isRoot) throws ParseException {
+		// if we are at the root of the path, the first reference is important
+		if (isRoot) {
+			List<Element<?>> elementsToCheck;
+			if (path.getName().equals("input")) {
+				elementsToCheck = inputs;
+				path = path.getChildPath();
+			}
+			else if (path.getName().equals("output")) {
+				elementsToCheck = outputs;
+				path = path.getChildPath();
+			}
+			else {
+				elementsToCheck = elements;
+			}
+			Iterator<Element<?>> iterator = elementsToCheck.iterator();
+			// check if the element is still in the list of unused, if so remove it
+			while (iterator.hasNext()) {
+				if (iterator.next().getName().equals(path.getName())) {
+					iterator.remove();
+					break;
+				}
+			}
+		}
+		if (path.getIndex() != null) {
+			removeUsedPipelineElements(elements, inputs, outputs, path.getIndex());
+		}
+		if (path.getChildPath() != null) {
+			removeUsedPipelineElements(elements, inputs, outputs, path.getChildPath(), false);
+		}
+	}
+
+	private static void removeUsedPipelineElements(List<Element<?>> elements, List<Element<?>> inputs, List<Element<?>> outputs, String query) throws ParseException {
+		List<QueryPart> parse = QueryParser.getInstance().parse(query);
+		for (QueryPart part : parse) {
+			if (part.getType() == QueryPart.Type.VARIABLE) {
+				// if it starts with a "/", we have an absolute path
+				removeUsedPipelineElements(elements, inputs, outputs, new ParsedPath(part.getToken().getContent()), part.getToken().getContent().startsWith("/"));
+			}
 		}
 	}
 	
@@ -149,6 +278,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	
 	public static final String INTERFACE_EDITABLE = "interfaceEditable";
 	private java.util.Map<String, String> configuration;
+	
+	public static final String ACTUAL_ID = "actualId";
 	
 	@Override
 	public ArtifactManager<VMService> getArtifactManager() {
@@ -261,10 +392,73 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		AnchorPane top = new AnchorPane();
 		splitPane.getItems().add(top);
 		serviceTree = new Tree<Step>(new StepMarshallable());
+		
+		// if a variable is updated, reselect current step to redraw
+		MainController.getInstance().getDispatcher().subscribe(VariableRenameEvent.class, new be.nabu.libs.events.api.EventHandler<VariableRenameEvent, Void>() {
+			@Override
+			public Void handle(VariableRenameEvent event) {
+				Platform.runLater(new Runnable() {
+					@Override
+					public void run() {
+						TreeCell<Step> selectedItem = serviceTree.getSelectionModel().getSelectedItem();
+						// reselect the selected item to force a redraw in case of a map step
+						if (selectedItem != null) {
+							serviceTree.getSelectionModel().select(selectedItem);
+						}
+					}
+				});
+				return null;
+			}
+		});
+		
+		// if an artifact is moved, update the current instance as well (it is done in the repository but not in foreground)
+		MainController.getInstance().getDispatcher().subscribe(ArtifactMoveEvent.class, new be.nabu.libs.events.api.EventHandler<ArtifactMoveEvent, Void>() {
+			@Override
+			public Void handle(ArtifactMoveEvent event) {
+				Entry serviceEntry = controller.getRepository().getEntry(getId(service));
+				if (serviceEntry != null) {
+					// we get the new entry
+					Entry entry = controller.getRepository().getEntry(event.getNewId());
+					if (refactor(controller.getRepository().getReferences(serviceEntry.getId()), entry, event)) {
+						MainController.getInstance().setChanged(serviceEntry.getId());
+						Platform.runLater(new Runnable() {
+							@Override
+							public void run() {
+								TreeCell<Step> selectedItem = serviceTree.getSelectionModel().getSelectedItem();
+								// reselect the selected item to force a redraw in case of a map step
+								if (selectedItem != null) {
+									serviceTree.getSelectionModel().select(selectedItem);
+								}
+							}
+						});
+					}
+				}
+				return null;
+			}
+			private boolean refactor(List<String> references, Entry entry, ArtifactMoveEvent event) {
+				boolean changed = false;
+				try {
+					if (references.contains(event.getOldId()) || references.contains(event.getNewId())) {
+						new VMServiceManager().updateReference(service, event.getOldId(), event.getNewId());
+						changed = true;
+					}
+				}
+				catch (IOException e) {
+					e.printStackTrace();
+				}
+				for (Entry child : entry) {
+					changed |= refactor(references, child, event);
+				}
+				return changed;
+			}
+		});
+		
 		serviceTree.rootProperty().set(new StepTreeItem(service.getRoot(), null, false));
 		serviceTree.getRootCell().expandedProperty().set(true);
 		// disable map tab
 		serviceController.getTabMap().setDisable(true);
+		
+		serviceTree.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		
 		serviceTree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Step>>() {
 			@Override
@@ -510,83 +704,250 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		leftTree = buildLeftPipeline(controller, serviceController, service.getRoot());
 		rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, service.getRoot());
 		
+		ContextMenu context = new ContextMenu();
+		final Entry entry = controller.getRepository().getEntry(getId(service));
+		if (entry != null && entry.getParent() instanceof ExtensibleEntry) {
+			MenuItem item = new MenuItem("Extract to separate service");
+			item.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+				@Override
+				public void handle(ActionEvent arg0) {
+					// find good name
+					int counter = 0;
+					while(counter < 100) {
+						if (entry.getParent().getChild("extracted" + counter) != null) {
+							counter++;
+						}
+						else {
+							break;
+						}
+					}
+					// start with the same pipeline
+					SimpleVMServiceDefinition definition = new SimpleVMServiceDefinition(service.getPipeline());
+					Sequence root = new Sequence();
+					for (TreeCell<Step> selected : serviceTree.getSelectionModel().getSelectedItems()) {
+						root.getChildren().add(selected.getItem().itemProperty().get());
+					}
+					definition.setRoot(root);
+					try {
+						// save the new service
+						ResourceEntry createNode = ((ExtensibleEntry) entry.getParent()).createNode("extracted" + counter, new VMServiceManager(), true);
+						new VMServiceManager().save(createNode, definition);
+						
+						// we reload it to make sure we don't accidently modify the original pipeline that served as the basis
+						VMService load = new VMServiceManager().load(createNode, new ArrayList<Validation<?>>());
+						// remove all the unused elements
+						removeUnusedElements(load);
+						
+						// reload repository
+						MainController.getInstance().getRepository().reload(entry.getParent().getId());
+						// trigger refresh in tree
+						TreeItem<Entry> resolve = MainController.getInstance().getTree().resolve(entry.getParent().getId().replace('.', '/'), false);
+						if (resolve != null) {
+							resolve.refresh();
+						}
+						// reload remotely
+						MainController.getInstance().getServer().getRemote().reload(entry.getParent().getId());
+						
+						StepGroup lastParent = null;
+						// remove the steps from the old service
+						for (TreeCell<Step> selected : serviceTree.getSelectionModel().getSelectedItems()) {
+							lastParent = selected.getItem().itemProperty().get().getParent();
+							selected.getItem().itemProperty().get().getParent().getChildren().remove(selected.getItem().itemProperty().get());
+						}
+						
+						// add a new map step with an invoke in it for the newly created service
+						Map map = new Map();
+						map.setParent(lastParent);
+						Invoke invoke = new Invoke();
+						invoke.setServiceId(createNode.getId());
+						invoke.setParent(map);
+						map.getChildren().add(invoke);
+						lastParent.getChildren().add(map);
+						serviceTree.refresh();
+						MainController.getInstance().setChanged();
+						
+						// clean up the pipeline of the old service
+						removeUnusedElements(service);
+						
+						// open it in a new tab
+						RepositoryBrowser.open(MainController.getInstance(), createNode);
+						// refocus on refactored service
+						MainController.getInstance().activate(entry.getId());
+					}
+					catch (Exception e) {
+						MainController.getInstance().notify(e);
+					}
+				}
+			});
+			item.disableProperty().bind(serviceTree.getSelectionModel().selectedItemProperty().isNull());
+			context.getItems().add(item);
+		}
+		if (!context.getItems().isEmpty()) {
+			serviceTree.setContextMenu(context);
+		}
+
+		// if we select the interface tab, we want to refresh the input & output trees as changes may have been done in the map view
+		// note that we _can't_ add the interface trees as refreshables to the pipeline trees as they are already coupled the other way around
+		// any coupling in both directions ends with an infinite refresh cycle
+		serviceController.getTabMap().getTabPane().getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Tab>() {
+			@Override
+			public void changed(ObservableValue<? extends Tab> arg0, Tab arg1, Tab arg2) {
+				if (serviceController.getTabInterface().equals(arg2)) {
+					inputTree.refresh();
+					outputTree.refresh();
+				}
+			}
+		});
+		
 		serviceTree.setClipboardHandler(new StepClipboardHandler(serviceTree));
 		// if we select a map step, we have to show the mapping screen
 		serviceTree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Step>>() {
 			@Override
 			public void changed(ObservableValue<? extends TreeCell<Step>> arg0, TreeCell<Step> arg1, TreeCell<Step> arg2) {
-				Step step = arg2.getItem().itemProperty().get();
-				
-				// refresh the step
-				arg2.getItem().itemProperty().get().refresh();
-				
-				// enable/disable buttons depending on the selection
-				// first just disable all buttons
-				for (Button button : addButtons.values()) {
-					button.disableProperty().set(true);
-				}
-				// for a stepgroup, reenable some or all buttons
-				if (step instanceof StepGroup) {
-					for (Class<? extends Step> supported : step instanceof LimitedStepGroup ? ((LimitedStepGroup) step).getAllowedSteps() : addButtons.keySet()) {
-						if (addButtons.containsKey(supported)) {
-							addButtons.get(supported).disableProperty().set(false);
+				if (arg2 != null) {
+					Step step = arg2.getItem().itemProperty().get();
+					
+					// refresh the step
+					arg2.getItem().itemProperty().get().refresh();
+					
+					// enable/disable buttons depending on the selection
+					// first just disable all buttons
+					for (Button button : addButtons.values()) {
+						button.disableProperty().set(true);
+					}
+					// for a stepgroup, reenable some or all buttons
+					if (step instanceof StepGroup) {
+						for (Class<? extends Step> supported : step instanceof LimitedStepGroup ? ((LimitedStepGroup) step).getAllowedSteps() : addButtons.keySet()) {
+							if (addButtons.containsKey(supported)) {
+								addButtons.get(supported).disableProperty().set(false);
+							}
 						}
 					}
-				}
-				
-				// if the new selection is not a map, or not the same map, clear it
-				if (!(step instanceof Map) || !arg2.equals(arg1)) {
-					serviceController.getTabMap().setDisable(true);
-					// remove all the current lines
-					for (Mapping mapping : mappings.values()) {
-						mapping.remove();
-					}
-					mappings.clear();
-					// remove all the set values
-					for (FixedValue fixedValue : fixedValues.values()) {
-						fixedValue.remove();
-					}
-					fixedValues.clear();
-					// clear left & right & center
-					serviceController.getPanLeft().getChildren().clear();
-					serviceController.getPanRight().getChildren().clear();
-					serviceController.getPanMiddle().getChildren().clear();
-				}
-				// if the new selection is a map, draw everything
-				if (arg2.getItem().itemProperty().get() instanceof Map) {
-					// reset the last selected element
-					lastSelectedInputElement.set(null);
-					lastSelectedOutputElement.set(null);
 					
-					leftTree = buildLeftPipeline(controller, serviceController, (Map) arg2.getItem().itemProperty().get());
-					rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, (Map) arg2.getItem().itemProperty().get());
-					
-					serviceController.getTabMap().setDisable(false);
-					
-					// first draw all the invokes and build a map of temporary result mappings
-					invokeWrappers = new HashMap<String, InvokeWrapper>();
-					for (final Step child : ((Map) arg2.getItem().itemProperty().get()).getChildren()) {
-						if (child instanceof Invoke) {
-							drawInvoke(controller, (Invoke) child, invokeWrappers, serviceController, service, serviceTree);
+					// if the new selection is not a map, or not the same map, clear it
+					if (!(step instanceof Map) || !arg2.equals(arg1)) {
+						serviceController.getTabMap().setDisable(true);
+						// select interface pane
+						serviceController.getTabMap().getTabPane().getSelectionModel().select(serviceController.getTabInterface());
+						// remove all the current lines
+						for (Mapping mapping : mappings.values()) {
+							mapping.remove();
 						}
+						mappings.clear();
+						// remove all the set values
+						for (FixedValue fixedValue : fixedValues.values()) {
+							fixedValue.remove();
+						}
+						fixedValues.clear();
+						// clear left & right & center
+						serviceController.getPanLeft().getChildren().clear();
+						serviceController.getPanRight().getChildren().clear();
+						serviceController.getPanMiddle().getChildren().clear();
 					}
-					Iterator<Step> iterator = ((Map) arg2.getItem().itemProperty().get()).getChildren().iterator();
-					// loop over the invoke again but this time to draw links
-					while (iterator.hasNext()) {
-						Step child = iterator.next();
-						if (child instanceof Invoke) {
-							Iterator<Step> linkIterator = ((Invoke) child).getChildren().iterator();
-							while(linkIterator.hasNext()) {
-								Step linkChild = linkIterator.next();
-								final Link link = (Link) linkChild;
+					// if the new selection is a map, draw everything
+					if (arg2.getItem().itemProperty().get() instanceof Map) {
+						// reset the last selected element
+						lastSelectedInputElement.set(null);
+						lastSelectedOutputElement.set(null);
+						
+						leftTree = buildLeftPipeline(controller, serviceController, (Map) arg2.getItem().itemProperty().get());
+						rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, (Map) arg2.getItem().itemProperty().get());
+						
+						// resize
+						serviceController.getPanLeft().minWidthProperty().set(50);
+						serviceController.getPanRight().minWidthProperty().set(50);
+						serviceController.getPanRight().setStyle("-fx-background-color: #ffaaaa");
+						serviceController.getPanLeft().prefWidthProperty().set(100);
+						serviceController.getPanRight().prefWidthProperty().set(100);
+						
+						serviceController.getTabMap().setDisable(false);
+
+						// make sure we select the map tab because you probably want to edit that...
+						serviceController.getTabMap().getTabPane().getSelectionModel().select(serviceController.getTabMap());
+						
+						// first draw all the invokes and build a map of temporary result mappings
+						invokeWrappers = new HashMap<String, InvokeWrapper>();
+						for (final Step child : ((Map) arg2.getItem().itemProperty().get()).getChildren()) {
+							if (child instanceof Invoke) {
+								drawInvoke(controller, (Invoke) child, invokeWrappers, serviceController, service, serviceTree);
+							}
+						}
+						Iterator<Step> iterator = ((Map) arg2.getItem().itemProperty().get()).getChildren().iterator();
+						// loop over the invoke again but this time to draw links
+						while (iterator.hasNext()) {
+							Step child = iterator.next();
+							if (child instanceof Invoke) {
+								Iterator<Step> linkIterator = ((Invoke) child).getChildren().iterator();
+								while(linkIterator.hasNext()) {
+									Step linkChild = linkIterator.next();
+									final Link link = (Link) linkChild;
+									if (link.isFixedValue()) {
+										// must be mapped to the input of an invoke
+										Tree<Element<?>> tree = invokeWrappers.get(((Invoke) child).getResultName()).getInput();
+										FixedValue fixedValue = buildFixedValue(controller, tree, link);
+										if (fixedValue == null) {
+											controller.notify(new ValidationMessage(Severity.ERROR, "The fixed value to " + link.getTo() + " is no longer valid"));
+											if (removeInvalid) {
+												linkIterator.remove();
+											}
+										}
+										else {
+											fixedValues.put(link, fixedValue);
+										}
+									}
+									else {
+										// a link in an invoke always maps to that invoke, so substitute the right tree for the input of this invoke
+										Mapping mapping = buildMapping(
+											link, 
+											serviceController.getPanMap(), 
+											leftTree, 
+											invokeWrappers.get(((Invoke) child).getResultName()).getInput(), 
+											invokeWrappers
+										);
+										if (mapping == null) {
+											controller.notify(new ValidationMessage(Severity.ERROR, "The mapping from " + ((Link) link).getFrom() + " to " + ((Link) link).getTo() + " is no longer valid, it will be removed"));
+											linkIterator.remove();
+											MainController.getInstance().setChanged();
+										}
+										else {
+											mappings.put(link, mapping);
+											mapping.getShape().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+												@Override
+												public void handle(MouseEvent arg0) {
+													controller.showProperties(new LinkPropertyUpdater(link, mapping));
+												}
+											});
+										}
+									}
+								}
+							}
+						}
+						// reinitialize all the drops
+						drops.clear();
+						// draw all the links from the mappings
+						iterator = ((Map) arg2.getItem().itemProperty().get()).getChildren().iterator();
+						while (iterator.hasNext()) {
+							Step child = iterator.next();
+							if (child instanceof Drop) {
+								DropWrapper wrapper = buildDropWrapper(rightTree, (Drop) child);
+								if (wrapper == null) {
+									controller.notify(new ValidationMessage(Severity.ERROR, "The drop " + ((Drop) child).getPath() + " is no longer valid"));
+									if (removeInvalid) {
+										iterator.remove();
+									}
+								}
+								else {
+									drops.put((Drop) child, wrapper);
+								}
+							}
+							else if (child instanceof Link) {
+								final Link link = (Link) child;
 								if (link.isFixedValue()) {
-									// must be mapped to the input of an invoke
-									Tree<Element<?>> tree = invokeWrappers.get(((Invoke) child).getResultName()).getInput();
-									FixedValue fixedValue = buildFixedValue(controller, tree, link);
+									FixedValue fixedValue = buildFixedValue(controller, rightTree, link);
 									if (fixedValue == null) {
 										controller.notify(new ValidationMessage(Severity.ERROR, "The fixed value to " + link.getTo() + " is no longer valid"));
 										if (removeInvalid) {
-											linkIterator.remove();
+											iterator.remove();
 										}
 									}
 									else {
@@ -594,18 +955,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									}
 								}
 								else {
-									// a link in an invoke always maps to that invoke, so substitute the right tree for the input of this invoke
-									Mapping mapping = buildMapping(
-										link, 
-										serviceController.getPanMap(), 
-										leftTree, 
-										invokeWrappers.get(((Invoke) child).getResultName()).getInput(), 
-										invokeWrappers
-									);
+									Mapping mapping = buildMapping(link, serviceController.getPanMap(), leftTree, rightTree, invokeWrappers);
+									// don't remove the mapping alltogether, the user might want to fix it or investigate it
 									if (mapping == null) {
-										controller.notify(new ValidationMessage(Severity.ERROR, "The mapping from " + ((Link) link).getFrom() + " to " + ((Link) link).getTo() + " is no longer valid, it will be removed"));
-										linkIterator.remove();
-										MainController.getInstance().setChanged();
+										controller.notify(new ValidationMessage(Severity.ERROR, "The mapping from " + link.getFrom() + " to " + link.getTo() + " is no longer valid"));
+										if (removeInvalid) {
+											iterator.remove();
+										}
 									}
 									else {
 										mappings.put(link, mapping);
@@ -619,63 +975,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								}
 							}
 						}
-					}
-					// reinitialize all the drops
-					drops.clear();
-					// draw all the links from the mappings
-					iterator = ((Map) arg2.getItem().itemProperty().get()).getChildren().iterator();
-					while (iterator.hasNext()) {
-						Step child = iterator.next();
-						if (child instanceof Drop) {
-							DropWrapper wrapper = buildDropWrapper(rightTree, (Drop) child);
-							if (wrapper == null) {
-								controller.notify(new ValidationMessage(Severity.ERROR, "The drop " + ((Drop) child).getPath() + " is no longer valid"));
-								if (removeInvalid) {
-									iterator.remove();
-								}
-							}
-							else {
-								drops.put((Drop) child, wrapper);
-							}
+						List<ValidationMessage> calculateInvocationOrder = ((Map) arg2.getItem().itemProperty().get()).calculateInvocationOrder();
+						if (!calculateInvocationOrder.isEmpty()) {
+							controller.notify(calculateInvocationOrder);
 						}
-						else if (child instanceof Link) {
-							final Link link = (Link) child;
-							if (link.isFixedValue()) {
-								FixedValue fixedValue = buildFixedValue(controller, rightTree, link);
-								if (fixedValue == null) {
-									controller.notify(new ValidationMessage(Severity.ERROR, "The fixed value to " + link.getTo() + " is no longer valid"));
-									if (removeInvalid) {
-										iterator.remove();
-									}
-								}
-								else {
-									fixedValues.put(link, fixedValue);
-								}
-							}
-							else {
-								Mapping mapping = buildMapping(link, serviceController.getPanMap(), leftTree, rightTree, invokeWrappers);
-								// don't remove the mapping alltogether, the user might want to fix it or investigate it
-								if (mapping == null) {
-									controller.notify(new ValidationMessage(Severity.ERROR, "The mapping from " + link.getFrom() + " to " + link.getTo() + " is no longer valid"));
-									if (removeInvalid) {
-										iterator.remove();
-									}
-								}
-								else {
-									mappings.put(link, mapping);
-									mapping.getShape().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
-										@Override
-										public void handle(MouseEvent arg0) {
-											controller.showProperties(new LinkPropertyUpdater(link, mapping));
-										}
-									});
-								}
-							}
-						}
-					}
-					List<ValidationMessage> calculateInvocationOrder = ((Map) arg2.getItem().itemProperty().get()).calculateInvocationOrder();
-					if (!calculateInvocationOrder.isEmpty()) {
-						controller.notify(calculateInvocationOrder);
 					}
 				}
 			}
@@ -731,6 +1034,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree);
 								serviceTree.getSelectionModel().getSelectedItem().refresh();
 								MainController.getInstance().setChanged();
+								MainController.getInstance().closeDragSource();
 							}
 						}
 					}
@@ -837,7 +1141,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		Pane pane = invokeWrapper.getComponent();
 		serviceController.getPanMiddle().getChildren().add(pane);
 		MovablePane movable = MovablePane.makeMovable(pane);
-		movable.setGridSize(10);
+//		movable.setGridSize(10);
 		movable.xProperty().addListener(new ChangeListener<Number>() {
 			@Override
 			public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
@@ -1036,7 +1340,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				(Structure) step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()), 
 				false,
 				step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()).getProperties()
-			), !disablePipelineEditing, true, linkButton, dropButton);
+			), !disablePipelineEditing, false, linkButton, dropButton);
 			dropButton.setTree(rightTree);
 			
 			rightTree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Element<?>>>() {
@@ -1047,16 +1351,37 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					}
 				}
 			});
-		
-			// make sure the "input" & "output" are not editable
-			for (TreeItem<Element<?>> item : rightTree.rootProperty().get().getChildren()) {
-				if (item.itemProperty().get().getName().equals("input") || item.itemProperty().get().getName().equals("output")) {
-					item.editableProperty().set(false);
-				}
-				else {
-					item.editableProperty().set(true);
+
+			if (!disablePipelineEditing) {
+				((ElementTreeItem) rightTree.rootProperty().get()).editableProperty().set(true);
+				((ElementTreeItem) rightTree.rootProperty().get()).setShallowAllowNonLocalModification(true);
+				((ElementImpl<?>) rightTree.rootProperty().get().itemProperty().get()).getBlockedProperties().addAll(rightTree.rootProperty().get().itemProperty().get().getSupportedProperties());
+				// make sure the "input" & "output" are not editable
+				for (TreeItem<Element<?>> item : rightTree.rootProperty().get().getChildren()) {
+					if (item.itemProperty().get().getName().equals("input") || item.itemProperty().get().getName().equals("output")) {
+						// simply block all properties
+						if (isInterfaceEditable()) {
+							((ElementImpl<?>) item.itemProperty().get()).getBlockedProperties().addAll(item.itemProperty().get().getSupportedProperties());
+							for (TreeItem<Element<?>> child : item.getChildren()) {
+								if (TypeUtils.getLocalChild((ComplexType) item.itemProperty().get().getType(), child.getName()) != null) {
+									((ElementTreeItem) child).setEditable(true);
+									((ElementTreeItem) child).setAllowNonLocalModification(false);
+								}
+								else {
+									((ElementTreeItem) child).setEditable(false);
+								}
+							}
+						}
+						else {
+							((ElementTreeItem) item).setEditable(false);
+						}
+					}
+					else {
+						item.editableProperty().set(true);
+					}
 				}
 			}
+			
 			serviceController.getPanRight().getChildren().add(right);
 			
 			AnchorPane.setLeftAnchor(right, 0d);
@@ -1068,10 +1393,31 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			inputTree.addRefreshListener(rightTree.getTreeCell(rightTree.rootProperty().get()));
 			outputTree.addRefreshListener(rightTree.getTreeCell(rightTree.rootProperty().get()));
 			
+			// make sure the left tree is refreshed if you add something to the right tree
+			rightTree.addRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
+			
 			TreeDragDrop.makeDroppable(rightTree, new DropLinkListener(controller, mappings, service, serviceController, serviceTree));
 			FixedValue.allowFixedValue(controller, fixedValues, serviceTree, rightTree);
 			
 			rightTree.setClipboardHandler(new ElementClipboardHandler(rightTree));
+			
+			ContextMenu menu = new ContextMenu();
+			MenuItem removeUnused = new MenuItem("Remove Unused Variables");
+			removeUnused.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+				@Override
+				public void handle(ActionEvent arg0) {
+					try {
+						removeUnusedElements(service);
+						rightTree.getRootCell().refresh();
+						MainController.getInstance().setChanged();
+					}
+					catch (ParseException e) {
+						MainController.getInstance().notify(e);
+					}
+				}
+			});
+			menu.getItems().add(removeUnused);
+			rightTree.setContextMenu(menu);
 			return rightTree;
 		}
 		catch (IOException e) {
@@ -1119,6 +1465,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		outputTree.addRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 		
 		leftTree.setClipboardHandler(new ElementClipboardHandler(leftTree, false));
+		
+		// expand explicitly
+		leftTree.getRootCell().expandedProperty().set(true);
+		
 		return leftTree;
 	}
 	
@@ -1170,7 +1520,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			return null;
 		}
 		else {
-			Mapping mapping = new Mapping(target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
+//			Mapping mapping = new Mapping(target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
+			Mapping mapping = buildMapping(link, target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
 			mapping.setRemoveMapping(new RemoveLinkListener(link));
 			if (link.isMask()) {
 				mapping.addStyleClass("maskLine");
@@ -1183,6 +1534,38 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 			return mapping;
 		}
+	}
+	
+	public static Mapping buildMapping(final Link link, Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to) {
+		Mapping mapping = new Mapping(target, from, to);
+		mapping.getShape().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+			@Override
+			public void handle(KeyEvent event) {
+				if (event.getCode() == KeyCode.F8) {
+					if (!link.isFixedValue()) {
+						boolean fromIsList = from.getItem().itemProperty().get().getType().isList(from.getItem().itemProperty().get().getProperties());
+						ParsedPath path = new ParsedPath(link.getFrom());
+
+						// not pretty...
+						boolean fromInvoke = path.getName().matches("result[a-f0-9]{32}");
+						DropLinkListener.setDefaultIndexes(fromInvoke ? path.getChildPath() : path, from.getTree().rootProperty().get(), fromIsList);
+						if (!path.toString().equals(link.getFrom())) {
+							link.setFrom(path.toString());
+							MainController.getInstance().setChanged();
+						}
+					}
+					
+					boolean toIsList = to.getItem().itemProperty().get().getType().isList(to.getItem().itemProperty().get().getProperties());
+					ParsedPath path = new ParsedPath(link.getTo());
+					DropLinkListener.setDefaultIndexes(path, to.getTree().rootProperty().get(), toIsList);
+					if (!path.toString().equals(link.getTo())) {
+						link.setTo(path.toString());
+						MainController.getInstance().setChanged();
+					}
+				}
+			}
+		});
+		return mapping;
 	}
 	
 	public static boolean hasIndexQuery(ParsedPath path) {
@@ -1306,6 +1689,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	public boolean isInterfaceEditable() {
 		return configuration == null || configuration.get(INTERFACE_EDITABLE) == null || configuration.get(INTERFACE_EDITABLE).equals("true");
 	}
+	
+	public String getId(VMService service) {
+		return configuration == null || configuration.get(ACTUAL_ID) == null ? (actualId == null ? service.getId() : actualId) : configuration.get(ACTUAL_ID);
+	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
@@ -1389,6 +1776,16 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 
 	public void setDisablePipelineEditing(boolean disablePipelineEditing) {
 		this.disablePipelineEditing = disablePipelineEditing;
+	}
+	
+	private String actualId;
+
+	public String isActualId() {
+		return actualId;
+	}
+
+	public void setActualId(String actualId) {
+		this.actualId = actualId;
 	}
 	
 	// it is important enough to put in the main tree

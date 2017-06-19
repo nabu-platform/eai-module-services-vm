@@ -356,9 +356,11 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				if (original != null) {
 					String rewritten;
 					if (!original.startsWith("=")) {
-						ParsedPath parsed = new ParsedPath(original);
-						rewrite(parsed, oldPath, newPath);
-						rewritten = parsed.toString();
+						// @2017-06-02: the message is a string if not interpolate, ignore
+//						ParsedPath parsed = new ParsedPath(original);
+//						rewrite(parsed, oldPath, newPath);
+//						rewritten = parsed.toString();
+						rewritten = original;
 					}
 					else {
 						rewritten = "=" + rewriteQuery(original.substring(1), oldPath, newPath);
@@ -388,9 +390,49 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		return updated;
 	}
 	
+	private static String flatten(ParsedPath path) {
+		StringBuilder builder = new StringBuilder();
+		while (path != null) {
+			if (!builder.toString().isEmpty()) {
+				builder.append("/");
+			}
+			builder.append(path.getName());
+			path = path.getChildPath();
+		}
+		return builder.toString();
+	}
+	
 	private static void rewrite(ParsedPath pathToRewrite, ParsedPath oldPath, ParsedPath newPath) {
 		if (pathToRewrite.getName().equals(oldPath.getName())) {
-			pathToRewrite.setName(newPath.getName());
+			// you can update either the name of the variable itself or the location (in the parent hierarchy)
+			// if you update the variable itself, the old path must end here for it to be renamed
+			// if you update the a parent path hierarchy, the rest of the path needs to match
+			String originalPath = flatten(pathToRewrite);
+			String flatOldPath = flatten(oldPath);
+			if (originalPath.equals(flatOldPath) || originalPath.startsWith(flatOldPath + "/") || oldPath.getChildPath() == null) {
+				pathToRewrite.setName(newPath.getName());
+				// if in the new path we don't have a child path, but we did in the old, update the current link to remove the bits that no longer match
+				if (oldPath.getChildPath() != null && originalPath.startsWith(flatOldPath) && newPath.getChildPath() == null) {
+					while (oldPath.getChildPath() != null && pathToRewrite.getChildPath() != null) {
+						pathToRewrite.setChildPath(pathToRewrite.getChildPath().getChildPath());
+						oldPath = oldPath.getChildPath();
+					}
+				}
+				else if (oldPath.getChildPath() == null && newPath.getChildPath() != null) {
+					// reinstate new path to make sure we don't interfer with others
+					newPath = new ParsedPath(newPath.toString());
+					ParsedPath originalChildPath = pathToRewrite.getChildPath();
+					pathToRewrite.setChildPath(newPath.getChildPath());
+					while (newPath.getChildPath() != null) {
+						newPath = newPath.getChildPath();
+					}
+					newPath.setChildPath(originalChildPath);
+				}
+				// otherwise if we move it deeper into the hierarchy, update that
+				else if (pathToRewrite.getChildPath() == null && oldPath.getChildPath() == null && newPath.getChildPath() != null) {
+					pathToRewrite.setChildPath(newPath.getChildPath());
+				}
+			}
 			if (pathToRewrite.getIndex() != null) {
 				String rewriteQuery = rewriteQuery(pathToRewrite.getIndex(), oldPath, newPath);
 				if (!rewriteQuery.equals(pathToRewrite.getIndex())) {
