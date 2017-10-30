@@ -45,6 +45,7 @@ import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.base.RootElement;
 import be.nabu.libs.types.base.ValueImpl;
+import be.nabu.libs.types.structure.Structure;
 import be.nabu.libs.validator.api.ValidationMessage;
 
 public class InvokeWrapper {
@@ -129,7 +130,8 @@ public class InvokeWrapper {
 				SimpleProperty<Integer> invocationProperty = new SimpleProperty<Integer>("invocationOrder", Integer.class, true);
 				EnumeratedSimpleProperty<String> targetProperty = new EnumeratedSimpleProperty<String>("target", String.class, false);
 				SimpleProperty<Boolean> asynchronousProperty = new SimpleProperty<Boolean>("asynchronous", Boolean.class, false);
-				targetProperty.addAll("$self", "$any", "$all", "$other");
+				targetProperty.addAll(InvokeWrapper.this.service.getExecutorProvider().getTargets().toArray(new String[0]));
+//				targetProperty.addAll("$self", "$any", "$all", "$other");
 				HashSet<Property<?>> hashSet = new HashSet<Property<?>>(Arrays.asList(invocationProperty, targetProperty, asynchronousProperty));
 				PropertyUpdater updater = new PropertyUpdater() {
 					@Override
@@ -155,6 +157,13 @@ public class InvokeWrapper {
 						}
 						else if (property.equals(asynchronousProperty)) {
 							invoke.setAsynchronous(value instanceof Boolean && (Boolean) value);
+							if (invoke.isAsynchronous()) {
+								output.rootProperty().set(new ElementTreeItem(new RootElement(new Structure(), "output"), null, false, false));
+							}
+							else {
+								output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
+							}
+							output.refresh();
 						}
 						else if (property.equals(targetProperty)) {
 							String oldValue = invoke.getTarget();
@@ -208,11 +217,16 @@ public class InvokeWrapper {
 			if (executorProvider.isBatch(invoke.getTarget())) {
 				output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
 			}
-			else {
+			// for asynchronous invoke there is no return value
+			else if (!invoke.isAsynchronous()) {
 				output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
 			}
-			output.getTreeCell(output.rootProperty().get()).expandedProperty().set(false);
+			// so we just put an empty structure in that case
+			else {
+				output.rootProperty().set(new ElementTreeItem(new RootElement(new Structure(), "output"), null, false, false));
+			}
 			output.set("invoke", invoke);
+			output.getTreeCell(output.rootProperty().get()).expandedProperty().set(false);
 			output.getRootCell().getNode().getStyleClass().add("invokeTree");
 			TreeDragDrop.makeDraggable(output, new ElementLineConnectListener(target));
 		

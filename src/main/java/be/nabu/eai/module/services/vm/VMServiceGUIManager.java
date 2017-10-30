@@ -18,6 +18,8 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
@@ -83,6 +85,7 @@ import be.nabu.eai.module.services.vm.util.StepClipboardHandler;
 import be.nabu.eai.module.services.vm.util.StepPropertyProvider;
 import be.nabu.eai.module.services.vm.util.StepTreeItem;
 import be.nabu.eai.module.types.structure.StructureGUIManager;
+import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExtensibleEntry;
@@ -295,6 +298,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	private Tree<Element<?>> rightTree;
 	private java.util.Map<String, InvokeWrapper> invokeWrappers;
 	private java.util.Map<Drop, DropWrapper> drops = new HashMap<Drop, DropWrapper>();
+	
+	private ObservableList<Validation<?>> validations = FXCollections.observableArrayList();
 
 	private Tree<Step> serviceTree;
 
@@ -391,7 +396,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		AnchorPane top = new AnchorPane();
 		splitPane.getItems().add(top);
-		serviceTree = new Tree<Step>(new StepMarshallable());
+//		serviceTree = new Tree<Step>(new StepMarshallable());
+		serviceTree = new Tree<Step>(new StepFactory(validations));
+		
+		validate(service);
 		
 		// if a variable is updated, reselect current step to redraw
 		MainController.getInstance().getDispatcher().subscribe(VariableRenameEvent.class, new be.nabu.libs.events.api.EventHandler<VariableRenameEvent, Void>() {
@@ -483,7 +491,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				else if (event.getCode() == KeyCode.E && event.isControlDown()) {
 					TreeCell<Step> selectedItem = serviceTree.getSelectionModel().getSelectedItem();
 					if (event.isShiftDown()) {
-						selectedItem.expandedProperty().set(true);
+						selectedItem.collapseAll();
 					}
 					else {
 						selectedItem.expandAll();
@@ -505,7 +513,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		search.textProperty().addListener(new ChangeListener<String>() {
 			@Override
 			public void changed(ObservableValue<? extends String> arg0, String arg1, String arg2) {
-				highlight(arg2);
+				unhighlight();
+				if (arg2 != null && !arg2.trim().isEmpty()) {
+					highlight(arg2);
+				}
 			}
 		});
 		serviceController.getHbxButtons().getChildren().add(search);
@@ -1051,6 +1062,32 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		});
 		return serviceController;
 	}
+
+	void validate(final VMService service) {
+		List<Validation<?>> validate = service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
+		validations.clear();
+		if (validate != null && validate.size() > 0) {
+			validations.addAll(validate);
+		}
+	}
+	
+	public void unhighlight() {
+		unhighlight(serviceTree.rootProperty().get());
+	}
+	
+	public void unhighlight(TreeItem<Step> item) {
+		TreeCell<Step> cell = serviceTree.getTreeCell(item);
+		cell.getCellValue().getNode().getStyleClass().remove("highlightedStep");
+		// don't collapse the root but collapse everything else so we only have expanded that which has a match afterwards
+		if (cell.getParent() != null && cell.expandedProperty().get()) {
+			cell.expandedProperty().set(false);
+		}
+		if (item.getChildren() != null && !item.getChildren().isEmpty()) {
+			for (TreeItem<Step> child : item.getChildren()) {
+				unhighlight(child);
+			}
+		}
+	}
 	
 	public void highlight(String text) {
 		highlight(serviceTree.rootProperty().get(), text);
@@ -1060,7 +1097,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		TreeCell<Step> cell = serviceTree.getTreeCell(item);
 		cell.getCellValue().getNode().getStyleClass().remove("highlightedStep");
 		if (text != null && !text.trim().isEmpty() && matches(item.itemProperty().get(), text, false)) {
-			cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+			if (!cell.getCellValue().getNode().getStyleClass().contains("highlightedStep")) {
+				cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+			}
 			cell.show();
 		}
 		if (item.getChildren() != null && !item.getChildren().isEmpty()) {
@@ -1070,7 +1109,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 		// children but none of them are shown in the tree
 		else if (text != null && !text.trim().isEmpty() && item.itemProperty().get() instanceof StepGroup && matches(item.itemProperty().get(), text, true)) {
-			cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+			if (!cell.getCellValue().getNode().getStyleClass().contains("highlightedStep")) {
+				cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
+			}
 			cell.show();
 		}
 	}
@@ -1208,7 +1249,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	private Button createAddButton(Tree<Step> serviceTree, Class<? extends Step> clazz) {
 		Button button = new Button();
 		button.setTooltip(new Tooltip(clazz.getSimpleName()));
-		button.setGraphic(MainController.loadGraphic(getIcon(clazz)));
+		button.setGraphic(MainController.loadFixedSizeGraphic(getIcon(clazz)));
 		button.addEventHandler(ActionEvent.ACTION, new ServiceAddHandler(serviceTree, clazz));
 		addButtons.put(clazz, button);
 		return button;

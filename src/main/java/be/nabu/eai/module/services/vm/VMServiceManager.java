@@ -149,6 +149,13 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				if (!references.contains(id)) {
 					references.add(id);
 				}
+				String target = ((Invoke) step).getTarget();
+				if (target != null) {
+					String[] split = target.split(":");
+					if (split.length > 1) {
+						references.add(split[0]);
+					}
+				}
 			}
 			if (step instanceof StepGroup) {
 				references.addAll(getReferencesForStep((StepGroup) step));
@@ -170,6 +177,11 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 			if (step instanceof Invoke) {
 				if (from.equals(((Invoke) step).getServiceId())) {
 					((Invoke) step).setServiceId(to);
+				}
+				String target = ((Invoke) step).getTarget();
+				if (target != null && target.startsWith(from + ":")) {
+					target = to + ":" + target.substring(from.length() + 1);
+					((Invoke) step).setTarget(target);
 				}
 			}
 			if (step instanceof StepGroup) {

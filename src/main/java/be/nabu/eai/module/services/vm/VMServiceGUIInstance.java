@@ -39,6 +39,7 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 
 	@Override
 	public List<Validation<?>> save() throws IOException {
+		manager.validate(service);
 		return new VMServiceManager().save((RepositoryEntry) entry, service);
 	}
 
@@ -75,6 +76,7 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 
 	@Override
 	public void setChanged(boolean changed) {
+		manager.validate(service);
 		this.changed = changed;
 	}
 
@@ -91,7 +93,7 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 
 	@Override
 	public List<? extends Validation<?>> validate() {
-		return service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());		
+		return service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
 	}
 
 	@Override

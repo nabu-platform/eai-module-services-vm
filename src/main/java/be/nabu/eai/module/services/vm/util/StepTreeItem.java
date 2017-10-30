@@ -8,7 +8,10 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.module.services.vm.VMServiceGUIManager;
 import be.nabu.jfx.control.tree.DisablableTreeItem;
@@ -60,7 +63,19 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 	@Override
 	public void refresh() {
 		leafProperty.set(!(itemProperty.get() instanceof StepGroup) || itemProperty.get() instanceof Map);
-		graphicProperty.set(MainController.loadGraphic(VMServiceGUIManager.getIcon(itemProperty.get())));
+//		graphicProperty.set(MainController.loadGraphic(VMServiceGUIManager.getIcon(itemProperty.get())));
+		ImageView loadGraphic = MainController.loadGraphic(VMServiceGUIManager.getIcon(itemProperty.get()));
+		if (loadGraphic.getImage().getHeight() > 16) {
+			loadGraphic.setPreserveRatio(true);
+			loadGraphic.setFitHeight(16);
+		}
+		HBox box = new HBox();
+		box.getChildren().add(loadGraphic);
+		box.setAlignment(Pos.CENTER);
+		box.setMinWidth(25);
+		box.setMaxWidth(25);
+		box.setPrefWidth(25);
+		graphicProperty.set(box);
 		if (!leafProperty.get()) {
 			TreeUtils.refreshChildren(new TreeItemCreator<Step>() {
 				@Override

@@ -9,6 +9,7 @@ import java.util.List;
 import nabu.misc.cluster.Services;
 import be.nabu.eai.module.cluster.ClusterArtifact;
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.services.CombinedServiceRunner;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ServiceRunner;
@@ -26,7 +27,7 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 	
 	@Override
 	public boolean isBatch(String target) {
-		return target != null && target.equals("$all");
+		return target != null && (target.equals("$all") || target.endsWith(":$all"));
 	}
 	
 	@Override
@@ -81,28 +82,36 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 			}
 		}
 		else {
-			throw new IllegalArgumentException("Invalid target: " + target);
+			String[] split = target.split(":");
+			Artifact resolve = repository.resolve(split[0]);
+			if (resolve instanceof ServiceRunner) {
+				return (ServiceRunner) resolve;
+			}
+			else {
+				throw new RuntimeException("Illegal target: " + target);
+			}
 		}
 	}
 
 	@Override
 	public List<String> getTargets() {
-		if (targets == null) {
-			synchronized(RepositoryExecutorProvider.class) {
-				if (targets == null) {
-					// we don't include the actual names of other hosts in the cluster as this is environment-specific
-					List<String> targets = new ArrayList<String>();
-					targets.add("$self");
-					// in the beginning self == any, in the future other logic can be used to select a server, for example "heavy" processes could be delegated to servers that are idling
-					targets.add("$any");
-					targets.add("$all");
-					// at some point we should choose a different server based on load etc
-					targets.add("$other");
-					// TODO: in the future we could add other clusters than your own with the same toggles, e.g.:
-					// cluster1:$any
-					// cluster1:$all
-					// at that point we need to add the referenced clusters to the "references" so it can get picked up by the deployer etc
-				}
+		// we don't include the actual names of other hosts in the cluster as this is environment-specific
+		List<String> targets = new ArrayList<String>();
+		targets.add("$self");
+		// in the beginning self == any, in the future other logic can be used to select a server, for example "heavy" processes could be delegated to servers that are idling
+		targets.add("$any");
+//					targets.add("$all");
+		// at some point we should choose a different server based on load etc
+//					targets.add("$other");
+		// TODO: in the future we could add other clusters than your own with the same toggles, e.g.:
+		// cluster1:$any
+		// cluster1:$all
+		// at that point we need to add the referenced clusters to the "references" so it can get picked up by the deployer etc
+		for (ServiceRunner runner : repository.getArtifacts(ServiceRunner.class)) {
+			if (runner instanceof Artifact) {
+				targets.add(((Artifact) runner).getId() + ":$self");
+				targets.add(((Artifact) runner).getId() + ":$any");
+//							targets.add(((Artifact) runner).getId() + ":$all");
 			}
 		}
 		return targets;
