@@ -18,6 +18,7 @@ import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.step.Switch;
 import be.nabu.libs.services.vm.step.Throw;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.properties.BaseProperty;
 import be.nabu.libs.types.properties.CommentProperty;
@@ -113,6 +114,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<ValidationMessage> updateProperty(Property<?> property, Object value) {
+		// when we rename an old variable (e.g. the for loop variable), we check that the variable does not exist in the parent before renaming it
+		// otherwise the variable defined by the for loop is invalid and not the one you meant
+		
 		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
 		if (property instanceof CommentProperty) {
 			step.setComment((String) value);
@@ -128,10 +132,16 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (step instanceof Catch) {
 			if (property instanceof VariableProperty) {
-				if (((Catch) step).getVariable() != null && value != null) {
-					ElementTreeItem.renameVariable(MainController.getInstance(), ((Catch) step).getVariable(), (String) value);
+				String variableName = (String) value;
+				if (ElementTreeItem.isValidName(variableName)) {
+					if (((Catch) step).getVariable() != null && value != null && !parentHasVariable(step, ((Catch) step).getVariable())) {
+						ElementTreeItem.renameVariable(MainController.getInstance(), ((Catch) step).getVariable(), variableName);
+					}
+					((Catch) step).setVariable(variableName);
 				}
-				((Catch) step).setVariable((String) value);
+				else {
+					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
+				}
 			}
 			else if (property instanceof ExceptionProperty) {
 				List<Class<? extends Exception>> classes = new ArrayList<Class<? extends Exception>>();
@@ -151,16 +161,28 @@ public class StepPropertyProvider implements PropertyUpdater {
 				((For) step).setQuery((String) value);
 			}
 			else if (property instanceof VariableProperty) {
-				if (((For) step).getVariable() != null && value != null) {
-					ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getVariable(), (String) value);
+				String variableName = (String) value;
+				if (ElementTreeItem.isValidName(variableName)) {
+					if (((For) step).getVariable() != null && value != null && !parentHasVariable(step, ((For) step).getVariable())) {
+						ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getVariable(), variableName);
+					}
+					((For) step).setVariable(variableName);
 				}
-				((For) step).setVariable((String) value);
+				else {
+					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
+				}
 			}
 			else if (property instanceof IndexProperty) {
-				if (((For) step).getIndex() != null && value != null) {
-					ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getIndex(), (String) value);
+				String variableName = (String) value;
+				if (ElementTreeItem.isValidName(variableName)) {
+					if (((For) step).getIndex() != null && value != null && !parentHasVariable(step, ((For) step).getIndex())) {
+						ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getIndex(), variableName);
+					}
+					((For) step).setIndex(variableName);
 				}
-				((For) step).setIndex((String) value);
+				else {
+					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
+				}
 			}
 		}
 		else if (step instanceof Switch) {
@@ -176,15 +198,30 @@ public class StepPropertyProvider implements PropertyUpdater {
 		}
 		else if (step instanceof Sequence) {
 			if (property instanceof TransactionVariableProperty) {
-				if (((Sequence) step).getTransactionVariable() != null && value != null) {
-					ElementTreeItem.renameVariable(MainController.getInstance(), ((Sequence) step).getTransactionVariable(), (String) value);
+				String variableName = (String) value;
+				if (ElementTreeItem.isValidName(variableName)) {
+					if (((Sequence) step).getTransactionVariable() != null && value != null && !parentHasVariable(step, ((Sequence) step).getTransactionVariable())) {
+						ElementTreeItem.renameVariable(MainController.getInstance(), ((Sequence) step).getTransactionVariable(), variableName);
+					}
+					((Sequence) step).setTransactionVariable(variableName);
 				}
-				((Sequence) step).setTransactionVariable((String) value);
+				else {
+					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
+				}
 			}
 		}
 		cell.refresh();
 		MainController.getInstance().setChanged();
 		return messages;
+	}
+	
+	private boolean parentHasVariable(Step step, String variableName) {
+		boolean has = false;
+		if (step.getParent() != null) {
+			ComplexType pipeline = step.getParent().getPipeline(MainController.getInstance().getRepository().getServiceContext());
+			has = pipeline.get(variableName) != null;
+		}
+		return has;
 	}
 	
 	public static class BreakCountProperty extends BaseProperty<Integer> {

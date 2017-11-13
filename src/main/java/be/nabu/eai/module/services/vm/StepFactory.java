@@ -135,9 +135,12 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 		
 		private void refresh(Step step) {
 			box.getChildren().clear();
-			
 			box.getChildren().add(validationsBox);
 			
+			drawStep(step, box);
+		}
+
+		public static void drawStep(Step step, HBox box) {
 			String labelText = step.getLabel();
 			if (labelText == null && step.getParent() instanceof Switch) {
 				labelText = "$default";
@@ -181,6 +184,9 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					hasVariable = true;
 					Label each = new Label("each");
 					each.getStyleClass().add("vm-description");
+					if (step.getLabel() != null) {
+						each.getStyleClass().add("vm-margin-left");
+					}
 					Label item = new Label(((For) step).getVariable());
 					item.getStyleClass().add("vm-value");
 					box.getChildren().addAll(each, item);

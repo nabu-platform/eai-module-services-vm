@@ -112,6 +112,8 @@
 
 .highlightedStep {
 	-fx-background-color: #dbeeff;
+	-fx-border-radius: 5px;
+	-fx-background-radius: 5px;
 }
 .highlightedStep .vm-comment {
 	-fx-background-color: #dbeeff;
