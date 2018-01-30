@@ -76,7 +76,9 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 
 	@Override
 	public void setChanged(boolean changed) {
-		manager.validate(service);
+		if (service != null) {
+			manager.validate(service);
+		}
 		this.changed = changed;
 	}
 

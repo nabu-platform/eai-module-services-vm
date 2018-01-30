@@ -1,6 +1,8 @@
 package be.nabu.eai.module.services.vm.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +34,7 @@ import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeItem;
 import be.nabu.jfx.control.tree.drag.TreeDragDrop;
+import be.nabu.libs.converter.ConverterFactory;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.api.Service;
@@ -133,21 +136,46 @@ public class InvokeWrapper {
 				targetProperty.addAll(InvokeWrapper.this.service.getExecutorProvider().getTargets().toArray(new String[0]));
 //				targetProperty.addAll("$self", "$any", "$all", "$other");
 				HashSet<Property<?>> hashSet = new HashSet<Property<?>>(Arrays.asList(invocationProperty, targetProperty, asynchronousProperty));
+				
+				List<Property<?>> targetProperties = new ArrayList<Property<?>>();
+				if (invoke.getTarget() != null && executorProvider != null) {
+					targetProperties.addAll(executorProvider.getTargetProperties(invoke.getTarget()));
+					hashSet.addAll(targetProperties);
+				}
+				
 				PropertyUpdater updater = new PropertyUpdater() {
 					@Override
 					public Set<Property<?>> getSupportedProperties() {
 						return hashSet;
 					}
+					@SuppressWarnings({ "unchecked", "rawtypes" })
 					@Override
 					public Value<?>[] getValues() {
-						return new Value<?> [] { 
+						List<Value<?>> list = new ArrayList<Value<?>>(Arrays.asList(new Value<?> [] { 
 							new ValueImpl<Integer>(invocationProperty, invoke.getInvocationOrder()),
 							new ValueImpl<String>(targetProperty, invoke.getTarget()),
-							new ValueImpl<Boolean>(asynchronousProperty, invoke.isAsynchronous())
-						};
+							new ValueImpl<Boolean>(asynchronousProperty, invoke.isAsynchronous() || (invoke.getTarget() != null && executorProvider != null && executorProvider.isAsynchronous(invoke.getTarget())))
+						}));
+						java.util.Map<String, String> values = invoke.getTargetProperties();
+						if (values != null) {
+							for (Property<?> property : targetProperties) {
+								Object value = values.get(property.getName());
+								if (value != null) {
+									if (!String.class.isAssignableFrom(property.getValueClass())) {
+										value = ConverterFactory.getInstance().getConverter().convert(value, property.getValueClass());
+									}
+									list.add(new ValueImpl(property, value));
+								}
+							}
+						}
+						return list.toArray(new Value<?>[list.size()]);
 					}
 					@Override
 					public boolean canUpdate(Property<?> property) {
+						// can not update the value of asynchronous if the target does not support synchronous
+						if (property.equals(asynchronousProperty) && invoke.getTarget() != null && executorProvider != null && executorProvider.isAsynchronous(invoke.getTarget())) {
+							return false;
+						}
 						return true;
 					}
 					@Override
@@ -157,25 +185,32 @@ public class InvokeWrapper {
 						}
 						else if (property.equals(asynchronousProperty)) {
 							invoke.setAsynchronous(value instanceof Boolean && (Boolean) value);
-							if (invoke.isAsynchronous()) {
-								output.rootProperty().set(new ElementTreeItem(new RootElement(new Structure(), "output"), null, false, false));
-							}
-							else {
-								output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
-							}
-							output.refresh();
+							updateOutput(service);
 						}
 						else if (property.equals(targetProperty)) {
-							String oldValue = invoke.getTarget();
 							invoke.setTarget(value == null ? null : value.toString());
-							if (executorProvider.isBatch(oldValue) != executorProvider.isBatch(invoke.getTarget())) {
-								if (executorProvider.isBatch(invoke.getTarget())) {
-									output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
+							updateOutput(service);
+							
+							hashSet.removeAll(targetProperties);
+							targetProperties.clear();
+							invoke.setTargetProperties(null);
+							if (invoke.getTarget() != null && executorProvider != null) {
+								targetProperties.addAll(executorProvider.getTargetProperties(invoke.getTarget()));
+								hashSet.addAll(targetProperties);
+							}
+						}
+						else {
+							if (invoke.getTargetProperties() == null) {
+								invoke.setTargetProperties(new HashMap<String, String>());
+							}
+							if (value == null) {
+								invoke.getTargetProperties().remove(property.getName());
+							}
+							else {
+								if (!String.class.isAssignableFrom(property.getValueClass())) {
+									value = ConverterFactory.getInstance().getConverter().convert(value, String.class);
 								}
-								else {
-									output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
-								}
-								output.refresh();
+								invoke.getTargetProperties().put(property.getName(), (String) value);
 							}
 						}
 						MainController.getInstance().setChanged();
@@ -214,17 +249,19 @@ public class InvokeWrapper {
 			output = new Tree<Element<?>>(new ElementMarshallable());
 			EAIDeveloperUtils.addElementExpansionHandler(output);
 			output.setClipboardHandler(new ElementClipboardHandler(output, false));
-			if (executorProvider.isBatch(invoke.getTarget())) {
-				output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
-			}
-			// for asynchronous invoke there is no return value
-			else if (!invoke.isAsynchronous()) {
-				output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
-			}
-			// so we just put an empty structure in that case
-			else {
-				output.rootProperty().set(new ElementTreeItem(new RootElement(new Structure(), "output"), null, false, false));
-			}
+			
+			updateOutput(service);
+//			if (executorProvider.isBatch(invoke.getTarget())) {
+//				output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
+//			}
+//			// for asynchronous invoke there is no return value
+//			else if (!invoke.isAsynchronous()) {
+//				output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
+//			}
+//			// so we just put an empty structure in that case
+//			else {
+//				output.rootProperty().set(new ElementTreeItem(new RootElement(new Structure(), "output"), null, false, false));
+//			}
 			output.set("invoke", invoke);
 			output.getTreeCell(output.rootProperty().get()).expandedProperty().set(false);
 			output.getRootCell().getNode().getStyleClass().add("invokeTree");
@@ -296,6 +333,22 @@ public class InvokeWrapper {
 			input.getStyleClass().remove("treeLeftContainer");
 			output.getStyleClass().remove("treeRightContainer");
 		}
+	}
+	
+	private void updateOutput(Service service) {
+		// no output for asynchronous invokes
+		if (invoke.isAsynchronous() || executorProvider.isAsynchronous(invoke.getTarget())) {
+			output.rootProperty().set(new ElementTreeItem(new RootElement(new Structure(), "output"), null, false, false));
+		}
+		// batch output for batch invokes
+		else if (executorProvider.isBatch(invoke.getTarget())) {
+			output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
+		}
+		// otherwise just the regular output
+		else {
+			output.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getOutputDefinition(), "output"), null, false, false));
+		}
+		output.refresh();
 	}
 	
 	private void removeInGroup(StepGroup group) {

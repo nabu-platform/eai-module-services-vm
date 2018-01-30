@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
+import java.util.UUID;
 
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
@@ -319,6 +320,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	
 	protected VMService newVMService(Repository repository, String id, Value<?>...values) {
 		SimpleVMServiceDefinition service = new SimpleVMServiceDefinition(new Pipeline(new Structure(), new Structure()));
+		service.setExecutorProvider(new RepositoryExecutorProvider(repository));
 		service.setId(id);
 		return service;
 	}
@@ -793,6 +795,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			item.disableProperty().bind(serviceTree.getSelectionModel().selectedItemProperty().isNull());
 			context.getItems().add(item);
 		}
+		
 		if (!context.getItems().isEmpty()) {
 			serviceTree.setContextMenu(context);
 		}
@@ -1068,6 +1071,24 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		validations.clear();
 		if (validate != null && validate.size() > 0) {
 			validations.addAll(validate);
+		}
+		makeIdsUnique(service.getRoot(), new ArrayList<String>());
+	}
+	
+	void makeIdsUnique(StepGroup group, List<String> ids) {
+		if (group.getChildren() != null) {
+			for (Step child : group.getChildren()) {
+				if (ids.indexOf(child.getId()) >= 0) {
+					child.setId(UUID.randomUUID().toString().replace("-", ""));
+					MainController.getInstance().setChanged();
+				}
+				else {
+					ids.add(child.getId());
+				}
+				if (child instanceof StepGroup) {
+					makeIdsUnique((StepGroup) child, ids);
+				}
+			}
 		}
 	}
 	

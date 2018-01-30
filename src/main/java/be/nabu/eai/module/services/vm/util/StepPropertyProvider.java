@@ -199,7 +199,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 		else if (step instanceof Sequence) {
 			if (property instanceof TransactionVariableProperty) {
 				String variableName = (String) value;
-				if (ElementTreeItem.isValidName(variableName)) {
+				if (variableName == null || ElementTreeItem.isValidName(variableName)) {
 					if (((Sequence) step).getTransactionVariable() != null && value != null && !parentHasVariable(step, ((Sequence) step).getTransactionVariable())) {
 						ElementTreeItem.renameVariable(MainController.getInstance(), ((Sequence) step).getTransactionVariable(), variableName);
 					}

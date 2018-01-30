@@ -31,7 +31,7 @@ public class DropWrapper {
 		// image is 16 pixels, we want to center it
 		image.layoutYProperty().bind(cell.leftAnchorYProperty().subtract(8));
 		// make invisible if it is not in scope
-		if (Boolean.FALSE.toString().equals(System.getProperty(SHOW_HIDDEN_FIXED, "false"))) {
+		if (Boolean.FALSE.toString().equals(System.getProperty(SHOW_HIDDEN_FIXED, "true"))) {
 			image.visibleProperty().bind(cell.getNode().visibleProperty());
 		}
 		image.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {

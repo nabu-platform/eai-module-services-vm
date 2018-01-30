@@ -172,7 +172,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 			}
 			
 			// only show the step name if explicitly set or if there is no comment and label present
-			if (step.getName() != null || (step.getLabel() == null && comment == null) || (labelText == null && comment == null) || step instanceof Switch || (step instanceof Throw && ((Throw) step).getMessage() == null)) {
+			if (step instanceof For || step.getName() != null || (step.getLabel() == null && comment == null) || (labelText == null && comment == null) || step instanceof Switch || (step instanceof Throw && ((Throw) step).getMessage() == null)) {
 				Label name = new Label(step.getName() == null ? step.getClass().getSimpleName() : step.getName());
 				name.getStyleClass().add("vm-name");
 				box.getChildren().addAll(name);
