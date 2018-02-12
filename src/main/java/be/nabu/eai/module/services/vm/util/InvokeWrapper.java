@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
@@ -62,8 +63,9 @@ public class InvokeWrapper {
 	private Tree<Element<?>> input, output;
 	private MainController controller;
 	private ExecutorProvider executorProvider;
+	private ReadOnlyBooleanProperty lock;
 
-	public InvokeWrapper(MainController controller, Invoke invoke, Pane target, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings) {
+	public InvokeWrapper(MainController controller, Invoke invoke, Pane target, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, ReadOnlyBooleanProperty lock) {
 		this.controller = controller;
 		this.invoke = invoke;
 		this.target = target;
@@ -71,6 +73,7 @@ public class InvokeWrapper {
 		this.serviceTree = serviceTree;
 		this.serviceController = serviceController;
 		this.mappings = mappings;
+		this.lock = lock;
 		this.executorProvider = new RepositoryExecutorProvider(controller.getRepository());
 	}
 	
@@ -243,7 +246,7 @@ public class InvokeWrapper {
 			input.set("invoke", invoke);
 			input.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getInputDefinition(), "input"), null, false, false));
 			input.getTreeCell(input.rootProperty().get()).expandedProperty().set(false);
-			TreeDragDrop.makeDroppable(input, new DropLinkListener(controller, mappings, this.service, serviceController, serviceTree));
+			TreeDragDrop.makeDroppable(input, new DropLinkListener(controller, mappings, this.service, serviceController, serviceTree, lock));
 			input.getRootCell().getNode().getStyleClass().add("invokeTree");
 			
 			output = new Tree<Element<?>>(new ElementMarshallable());

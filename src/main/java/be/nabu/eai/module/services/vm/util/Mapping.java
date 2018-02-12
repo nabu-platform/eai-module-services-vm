@@ -2,6 +2,7 @@ package be.nabu.eai.module.services.vm.util;
 
 import java.util.Arrays;
 
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.event.EventHandler;
@@ -55,10 +56,13 @@ public class Mapping {
 	
 	private Pane target;
 
-	public Mapping(Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to) {
+	private ReadOnlyBooleanProperty lock;
+
+	public Mapping(Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to, ReadOnlyBooleanProperty lock) {
 		this.target = target;
 		this.from = from;
 		this.to = to;
+		this.lock = lock;
 
 		drawCircles();
 		
@@ -176,7 +180,7 @@ public class Mapping {
 		shape.addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
-				if (event.getCode() == KeyCode.DELETE) {
+				if (event.getCode() == KeyCode.DELETE && lock.get()) {
 					if (removeMapping != null) {
 						if (removeMapping.remove(Mapping.this)) {
 							remove();

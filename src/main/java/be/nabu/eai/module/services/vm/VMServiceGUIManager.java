@@ -15,7 +15,11 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import javafx.application.Platform;
+import javafx.beans.binding.BooleanBinding;
+import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -538,7 +542,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		TreeDragDrop.makeDraggable(serviceTree, new TreeDragListener<Step>() {
 			@Override
 			public boolean canDrag(TreeCell<Step> arg0) {
-				return arg0.getItem().getParent() != null;
+				return controller.hasLock().get() && arg0.getItem().getParent() != null;
 			}
 			@Override
 			public void drag(TreeCell<Step> arg0) {
@@ -597,6 +601,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		// show the input & output
 		StructureGUIManager structureManager = new StructureGUIManager();
+		structureManager.setActualId(actualId);
 		VBox input = new VBox();
 		RootElementWithPush element = new RootElementWithPush(
 			(Structure) service.getPipeline().get(Pipeline.INPUT).getType(), 
@@ -657,7 +662,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		DefinedServiceInterface value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), service.getPipeline().getProperties());
 		serviceController.getTxtInterface().setText(value == null ? null : value.getId());
-		serviceController.getTxtInterface().setDisable(!isInterfaceEditable());
+		
+//		serviceController.getTxtInterface().setDisable(!isInterfaceEditable());
+		BooleanProperty locked = controller.hasLock(getId(service));
+		BooleanBinding notLocked = locked.not();
+		
+		serviceController.getHbxButtons().disableProperty().bind(notLocked);
+		serviceController.getTxtInterface().disableProperty().bind(notLocked.or(new SimpleBooleanProperty(!isInterfaceEditable())));
+		
 		// show the service interface
 		serviceController.getTxtInterface().textProperty().addListener(new ChangeListener<String>() {
 			@Override
@@ -691,6 +703,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getChkValidateInput().setSelected(ValueUtils.getValue(ValidateProperty.getInstance(), service.getPipeline().get(Pipeline.INPUT).getProperties()));
 		serviceController.getChkValidateOutput().setSelected(ValueUtils.getValue(ValidateProperty.getInstance(), service.getPipeline().get(Pipeline.OUTPUT).getProperties()));
 		
+		serviceController.getChkValidateInput().disableProperty().bind(notLocked);
+		serviceController.getChkValidateOutput().disableProperty().bind(notLocked);
+		
 		// @2016-01-15: fun fact: i added container types which can contain for example services
 		// now the container upon save() will redraw the container (to ensure if artifacts impact one another they show the latest version)
 		// upon redraw (without reload) the rootelementwithpush was created around the complex type with the validate set true on the element
@@ -714,13 +729,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 		
-		leftTree = buildLeftPipeline(controller, serviceController, service.getRoot());
-		rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, service.getRoot());
+		leftTree = buildLeftPipeline(controller, serviceController, service.getRoot(), getId(service));
+		rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, service.getRoot(), getId(service));
 		
 		ContextMenu context = new ContextMenu();
 		final Entry entry = controller.getRepository().getEntry(getId(service));
 		if (entry != null && entry.getParent() instanceof ExtensibleEntry) {
 			MenuItem item = new MenuItem("Extract to separate service");
+			item.disableProperty().bind(notLocked);
 			item.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
 				@Override
 				public void handle(ActionEvent arg0) {
@@ -864,8 +880,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						lastSelectedInputElement.set(null);
 						lastSelectedOutputElement.set(null);
 						
-						leftTree = buildLeftPipeline(controller, serviceController, (Map) arg2.getItem().itemProperty().get());
-						rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, (Map) arg2.getItem().itemProperty().get());
+						leftTree = buildLeftPipeline(controller, serviceController, (Map) arg2.getItem().itemProperty().get(), getId(service));
+						rightTree = buildRightPipeline(controller, service, serviceTree, serviceController, (Map) arg2.getItem().itemProperty().get(), getId(service));
 						
 						// resize
 						serviceController.getPanLeft().minWidthProperty().set(50);
@@ -883,7 +899,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						invokeWrappers = new HashMap<String, InvokeWrapper>();
 						for (final Step child : ((Map) arg2.getItem().itemProperty().get()).getChildren()) {
 							if (child instanceof Invoke) {
-								drawInvoke(controller, (Invoke) child, invokeWrappers, serviceController, service, serviceTree);
+								drawInvoke(controller, (Invoke) child, invokeWrappers, serviceController, service, serviceTree, locked);
 							}
 						}
 						Iterator<Step> iterator = ((Map) arg2.getItem().itemProperty().get()).getChildren().iterator();
@@ -916,7 +932,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 											serviceController.getPanMap(), 
 											leftTree, 
 											invokeWrappers.get(((Invoke) child).getResultName()).getInput(), 
-											invokeWrappers
+											invokeWrappers,
+											locked
 										);
 										if (mapping == null) {
 											controller.notify(new ValidationMessage(Severity.ERROR, "The mapping from " + ((Link) link).getFrom() + " to " + ((Link) link).getTo() + " is no longer valid, it will be removed"));
@@ -969,7 +986,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									}
 								}
 								else {
-									Mapping mapping = buildMapping(link, serviceController.getPanMap(), leftTree, rightTree, invokeWrappers);
+									Mapping mapping = buildMapping(link, serviceController.getPanMap(), leftTree, rightTree, invokeWrappers, locked);
 									// don't remove the mapping alltogether, the user might want to fix it or investigate it
 									if (mapping == null) {
 										controller.notify(new ValidationMessage(Severity.ERROR, "The mapping from " + link.getFrom() + " to " + link.getTo() + " is no longer valid"));
@@ -1045,7 +1062,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								invoke.setX(event.getX());
 								invoke.setY(event.getY());
 								target.getChildren().add(invoke);
-								drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree);
+								drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree, locked);
 								serviceTree.getSelectionModel().getSelectedItem().refresh();
 								MainController.getInstance().setChanged();
 								MainController.getInstance().closeDragSource();
@@ -1058,8 +1075,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getPanMap().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
-				if (event.getCode() == KeyCode.D && event.isControlDown() && lastSelectedInputElement.get() != null && lastSelectedOutputElement.get() != null) {
-					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), event.isShiftDown());
+				if (locked.get() && event.getCode() == KeyCode.D && event.isControlDown() && lastSelectedInputElement.get() != null && lastSelectedOutputElement.get() != null) {
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), event.isShiftDown(), locked);
 				}
 			}
 		});
@@ -1197,12 +1214,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return false;
 	}
 	
-	private InvokeWrapper drawInvoke(MainController controller, final Invoke invoke, java.util.Map<String, InvokeWrapper> invokeWrappers, VMServiceController serviceController, VMService service, Tree<Step> serviceTree) {
-		InvokeWrapper invokeWrapper = new InvokeWrapper(controller, invoke, serviceController.getPanMiddle(), service, serviceController, serviceTree, mappings);
+	private InvokeWrapper drawInvoke(MainController controller, final Invoke invoke, java.util.Map<String, InvokeWrapper> invokeWrappers, VMServiceController serviceController, VMService service, Tree<Step> serviceTree, ReadOnlyBooleanProperty lock) {
+		InvokeWrapper invokeWrapper = new InvokeWrapper(controller, invoke, serviceController.getPanMiddle(), service, serviceController, serviceTree, mappings, lock);
 		invokeWrappers.put(invoke.getResultName(), invokeWrapper);
 		Pane pane = invokeWrapper.getComponent();
 		serviceController.getPanMiddle().getChildren().add(pane);
-		MovablePane movable = MovablePane.makeMovable(pane);
+		BooleanProperty locked = controller.hasLock(getId(service));
+		MovablePane movable = MovablePane.makeMovable(pane, locked);
 //		movable.setGridSize(10);
 		movable.xProperty().addListener(new ChangeListener<Number>() {
 			@Override
@@ -1315,6 +1333,26 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									drop.setParent(step);
 									step.getChildren().add(drop);
 									drops.put(drop, new DropWrapper(selected, drop));
+									
+									// if we are creating a new drop, remove any links to the target
+									iterator = step.getChildren().iterator();
+									while (iterator.hasNext()) {
+										Step child = iterator.next();
+										// if there is a link to the child
+										if (child instanceof Link && path.equals(((Link) child).getTo())) {
+											if (mappings.containsKey(child)) {
+												mappings.get(child).remove();
+												mappings.remove(child);
+												iterator.remove();
+											}
+											else if (fixedValues.containsKey(child)) {
+												fixedValues.get(child).remove();
+												fixedValues.remove(child);
+												iterator.remove();
+											}
+										}
+									}
+									
 									MainController.getInstance().setChanged();
 								}
 							}
@@ -1333,7 +1371,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
-	private void link(VMService service, VMServiceController serviceController, TreeCell<Element<?>> from, TreeCell<Element<?>> to, boolean mask) {
+	private void link(VMService service, VMServiceController serviceController, TreeCell<Element<?>> from, TreeCell<Element<?>> to, boolean mask, ReadOnlyBooleanProperty lock) {
 		boolean alreadyMapped = false;
 		for (Mapping mapping : mappings.values()) {
 			if (mapping.getFrom().equals(from) && mapping.getTo().equals(to)) {
@@ -1346,7 +1384,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			Element<?> toElement = to.getItem().itemProperty().get();
 			// if we can straight map it, do that
 			if (service.isMappable(fromElement, toElement) || (fromElement.getType() instanceof ComplexType && toElement.getType() instanceof ComplexType && mask)) {
-				DropLinkListener.drawMapping(serviceController, serviceTree, mappings, to, from, mask);
+				DropLinkListener.drawMapping(serviceController, serviceTree, mappings, to, from, mask, lock);
 			}
 			// if they are both complex types, we can do a best effort mapping by name
 			else if (fromElement.getType() instanceof ComplexType && toElement.getType() instanceof ComplexType) {
@@ -1365,7 +1403,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							if (cell != null) {
 								TreeCell<Element<?>> target = toFields.get(child.itemProperty().get().getName());
 								if (target != null) {
-									link(service, serviceController, cell, target, mask);
+									link(service, serviceController, cell, target, mask, lock);
 								}
 							}
 						}
@@ -1375,7 +1413,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
-	private Tree<Element<?>> buildRightPipeline(MainController controller, VMService service, Tree<Step> serviceTree, VMServiceController serviceController, StepGroup step) {
+	private Tree<Element<?>> buildRightPipeline(MainController controller, VMService service, Tree<Step> serviceTree, VMServiceController serviceController, StepGroup step, String actualId) {
 		// remove listeners
 		if (rightTree != null) {
 			inputTree.removeRefreshListener(rightTree.getTreeCell(rightTree.rootProperty().get()));
@@ -1384,6 +1422,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		final VBox right = new VBox();
 		
 		StructureGUIManager structureManager = new StructureGUIManager();
+		structureManager.setActualId(actualId);
 		try {
 			// drop button was added afterwards, hence the mess
 			DropButton dropButton = new DropButton(step);
@@ -1394,7 +1433,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			linkButton.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent arg0) {
-					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), arg0.getButton() == MouseButton.SECONDARY);
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), arg0.getButton() == MouseButton.SECONDARY, controller.hasLock(actualId));
 				}
 			});
 			
@@ -1458,7 +1497,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			// make sure the left tree is refreshed if you add something to the right tree
 			rightTree.addRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 			
-			TreeDragDrop.makeDroppable(rightTree, new DropLinkListener(controller, mappings, service, serviceController, serviceTree));
+			TreeDragDrop.makeDroppable(rightTree, new DropLinkListener(controller, mappings, service, serviceController, serviceTree, controller.hasLock(actualId)));
 			FixedValue.allowFixedValue(controller, fixedValues, serviceTree, rightTree);
 			
 			rightTree.setClipboardHandler(new ElementClipboardHandler(rightTree));
@@ -1490,7 +1529,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 
-	private Tree<Element<?>> buildLeftPipeline(MainController controller, VMServiceController serviceController, StepGroup step) {
+	private Tree<Element<?>> buildLeftPipeline(MainController controller, VMServiceController serviceController, StepGroup step, String actualId) {
 		if (leftTree != null) {
 			inputTree.removeRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 			outputTree.removeRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
@@ -1503,7 +1542,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()).getProperties()
 		), null, false, false));
 		// show properties if selected
-		leftTree.getSelectionModel().selectedItemProperty().addListener(new ElementSelectionListener(controller, false));
+		ElementSelectionListener elementSelectionListener = new ElementSelectionListener(controller, false);
+		leftTree.getSelectionModel().selectedItemProperty().addListener(elementSelectionListener);
 		
 		leftTree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeCell<Element<?>>>() {
 			@Override
@@ -1550,7 +1590,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return new FixedValue(controller, tree.getTreeCell(target), link);
 	}
 	
-	private Mapping buildMapping(Link link, Pane target, Tree<Element<?>> left, Tree<Element<?>> right, java.util.Map<String, InvokeWrapper> invokeWrappers) {
+	private Mapping buildMapping(Link link, Pane target, Tree<Element<?>> left, Tree<Element<?>> right, java.util.Map<String, InvokeWrapper> invokeWrappers, ReadOnlyBooleanProperty lock) {
 		ParsedPath from = new ParsedPath(link.getFrom());
 		TreeItem<Element<?>> fromElement;
 		Tree<Element<?>> fromTree;
@@ -1583,7 +1623,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 		else {
 //			Mapping mapping = new Mapping(target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
-			Mapping mapping = buildMapping(link, target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
+			Mapping mapping = buildMapping(link, target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement), lock);
 			mapping.setRemoveMapping(new RemoveLinkListener(link));
 			if (link.isMask()) {
 				mapping.addStyleClass("maskLine");
@@ -1598,12 +1638,12 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
-	public static Mapping buildMapping(final Link link, Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to) {
-		Mapping mapping = new Mapping(target, from, to);
+	public static Mapping buildMapping(final Link link, Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to, ReadOnlyBooleanProperty lock) {
+		Mapping mapping = new Mapping(target, from, to, lock);
 		mapping.getShape().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
-				if (event.getCode() == KeyCode.F8) {
+				if (event.getCode() == KeyCode.F8 && lock.get()) {
 					if (!link.isFixedValue()) {
 						boolean fromIsList = from.getItem().itemProperty().get().getType().isList(from.getItem().itemProperty().get().getProperties());
 						ParsedPath path = new ParsedPath(link.getFrom());

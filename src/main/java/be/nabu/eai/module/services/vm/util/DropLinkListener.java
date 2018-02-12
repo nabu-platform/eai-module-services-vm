@@ -1,5 +1,6 @@
 package be.nabu.eai.module.services.vm.util;
 
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.event.EventHandler;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
@@ -27,13 +28,15 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 	private final Tree<Step> serviceTree;
 	private java.util.Map<Link, Mapping> mappings;
 	private MainController controller;
+	private ReadOnlyBooleanProperty lock;
 
-	public DropLinkListener(MainController controller, java.util.Map<Link, Mapping> mappings, VMService service, VMServiceController serviceController, Tree<Step> serviceTree) {
+	public DropLinkListener(MainController controller, java.util.Map<Link, Mapping> mappings, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, ReadOnlyBooleanProperty lock) {
 		this.controller = controller;
 		this.mappings = mappings;
 		this.service = service;
 		this.serviceController = serviceController;
 		this.serviceTree = serviceTree;
+		this.lock = lock;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -69,12 +72,12 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 	}
 	
 	private void draw(TreeCell<Element<?>> target, TreeCell<?> dragged) {
-		drawMapping(serviceController, serviceTree, mappings, target, dragged, MainController.getInstance().isKeyActive(KeyCode.CONTROL));
+		drawMapping(serviceController, serviceTree, mappings, target, dragged, MainController.getInstance().isKeyActive(KeyCode.CONTROL), lock);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static void drawMapping(VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, TreeCell<Element<?>> target, TreeCell<?> dragged, boolean mask) {
-		Mapping mapping = new Mapping(serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target);
+	public static void drawMapping(VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, TreeCell<Element<?>> target, TreeCell<?> dragged, boolean mask, ReadOnlyBooleanProperty lock) {
+		Mapping mapping = new Mapping(serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
 		ParsedPath from = new ParsedPath(TreeDragDrop.getPath(dragged.getItem()));
 		Invoke sourceInvoke = null;
 		// you are dragging something from an invoke output
