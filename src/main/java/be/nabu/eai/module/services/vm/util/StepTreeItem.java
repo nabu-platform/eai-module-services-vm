@@ -2,6 +2,7 @@ package be.nabu.eai.module.services.vm.util;
 
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
@@ -33,8 +34,10 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 	private BooleanProperty leafProperty = new SimpleBooleanProperty(false);
 	private ObservableList<TreeItem<Step>> children = FXCollections.observableArrayList();
 	private BooleanProperty disableProperty = new SimpleBooleanProperty(false);
+	private ReadOnlyBooleanProperty hasLock;
 	
-	public StepTreeItem(Step step, StepTreeItem parent, boolean isEditable) {
+	public StepTreeItem(Step step, StepTreeItem parent, boolean isEditable, ReadOnlyBooleanProperty hasLock) {
+		this.hasLock = hasLock;
 		this.itemProperty.set(step);
 		this.parent = parent;
 		editableProperty.set(isEditable);
@@ -80,7 +83,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 			TreeUtils.refreshChildren(new TreeItemCreator<Step>() {
 				@Override
 				public TreeItem<Step> create(TreeItem<Step> parent, Step child) {
-					return new StepTreeItem(child, (StepTreeItem) parent, editableProperty.get());	
+					return new StepTreeItem(child, (StepTreeItem) parent, editableProperty.get(), hasLock);	
 				}
 			}, this, ((StepGroup) itemProperty.get()).getChildren());
 		}
@@ -113,7 +116,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 
 	@Override
 	public boolean remove() {
-		if (itemProperty().get().getParent() != null) {
+		if ((hasLock == null || hasLock.get()) && itemProperty().get().getParent() != null) {
 			itemProperty().get().getParent().getChildren().remove(itemProperty().get());
 			MainController.getInstance().setChanged();
 			return true;
@@ -123,55 +126,57 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 
 	@Override
 	public TreeItem<Step> move(be.nabu.jfx.control.tree.MovableTreeItem.Direction direction) {
-		Step step = itemProperty().get();
-		if (step.getParent() != null) {
-			int indexInParent = step.getParent().getChildren().indexOf(step);
-			switch(direction) {
-				case DOWN:
-					// can only move it down if it's not the last item
-					if (indexInParent < step.getParent().getChildren().size() - 1) {
-						step.getParent().getChildren().remove(indexInParent);
-						step.getParent().getChildren().add(indexInParent + 1, step);
-						getParent().refresh();
-					}
-				break;
-				case UP:
-					if (indexInParent > 0) {
-						step.getParent().getChildren().remove(indexInParent);
-						step.getParent().getChildren().add(indexInParent - 1, step);
-						getParent().refresh();
-					}
-				break;
-				case RIGHT:
-					// it will be added to the _previous_ step group
-					if (indexInParent > 0) {
-						Step targetParent = step.getParent().getChildren().get(indexInParent - 1);
-						if (targetParent instanceof StepGroup) {
+		if (hasLock == null || hasLock.get()) {
+			Step step = itemProperty().get();
+			if (step.getParent() != null) {
+				int indexInParent = step.getParent().getChildren().indexOf(step);
+				switch(direction) {
+					case DOWN:
+						// can only move it down if it's not the last item
+						if (indexInParent < step.getParent().getChildren().size() - 1) {
+							step.getParent().getChildren().remove(indexInParent);
+							step.getParent().getChildren().add(indexInParent + 1, step);
+							getParent().refresh();
+						}
+					break;
+					case UP:
+						if (indexInParent > 0) {
+							step.getParent().getChildren().remove(indexInParent);
+							step.getParent().getChildren().add(indexInParent - 1, step);
+							getParent().refresh();
+						}
+					break;
+					case RIGHT:
+						// it will be added to the _previous_ step group
+						if (indexInParent > 0) {
+							Step targetParent = step.getParent().getChildren().get(indexInParent - 1);
+							if (targetParent instanceof StepGroup) {
+								if (targetParent instanceof LimitedStepGroup && ((LimitedStepGroup) targetParent).getAllowedSteps().contains(step.getClass())) {
+									step.getParent().getChildren().remove(indexInParent);
+									((StepGroup) targetParent).getChildren().add(step);
+									step.setParent((StepGroup) targetParent);
+									getParent().getChildren().get(indexInParent - 1).refresh();
+									getParent().refresh();
+								}
+							}
+						}
+					break;
+					case LEFT:
+						if (step.getParent().getParent() != null) {
+							StepGroup targetParent = step.getParent().getParent();
+							int indexInNewParent = targetParent.getChildren().indexOf(step.getParent());
 							if (targetParent instanceof LimitedStepGroup && ((LimitedStepGroup) targetParent).getAllowedSteps().contains(step.getClass())) {
 								step.getParent().getChildren().remove(indexInParent);
-								((StepGroup) targetParent).getChildren().add(step);
-								step.setParent((StepGroup) targetParent);
-								getParent().getChildren().get(indexInParent - 1).refresh();
+								targetParent.getChildren().add(indexInNewParent + 1, step);
+								step.setParent(targetParent);
+								getParent().getParent().refresh();
 								getParent().refresh();
 							}
 						}
-					}
-				break;
-				case LEFT:
-					if (step.getParent().getParent() != null) {
-						StepGroup targetParent = step.getParent().getParent();
-						int indexInNewParent = targetParent.getChildren().indexOf(step.getParent());
-						if (targetParent instanceof LimitedStepGroup && ((LimitedStepGroup) targetParent).getAllowedSteps().contains(step.getClass())) {
-							step.getParent().getChildren().remove(indexInParent);
-							targetParent.getChildren().add(indexInNewParent + 1, step);
-							step.setParent(targetParent);
-							getParent().getParent().refresh();
-							getParent().refresh();
-						}
-					}
-				break;
+					break;
+				}
+				MainController.getInstance().setChanged();
 			}
-			MainController.getInstance().setChanged();
 		}
 		return null;
 	}

@@ -48,6 +48,7 @@ import be.nabu.libs.services.vm.step.Throw;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.base.ValueImpl;
@@ -247,7 +248,10 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		boolean updated = false;
 		System.out.println("CHECKING " + currentType + " == " + impactedArtifact);
 		// any links from this path are impacted
-		if (currentType.equals(impactedArtifact) || !TypeUtils.getUpcastPath(currentType, impactedArtifact).isEmpty()) {
+		// because of reloads etc, the object instances might not be the same although they are in fact from the same entry
+		// do an id check to verify whether they are not actually the same after all
+		if (currentType.equals(impactedArtifact) || !TypeUtils.getUpcastPath(currentType, impactedArtifact).isEmpty()
+				|| (currentType instanceof DefinedType && impactedArtifact instanceof DefinedType && ((DefinedType) currentType).getId().equals(((DefinedType) impactedArtifact).getId()))) {
 			String relativeOldPath = currentPath == null ? oldPath : currentPath + "/" + oldPath;
 			String relativeNewPath = currentPath == null ? newPath : currentPath + "/" + newPath;
 			System.out.println("FOUND IMPACTED:" + currentPath + " > " + relativeOldPath + " > " + relativeNewPath);
@@ -320,6 +324,10 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 							ParsedPath parsed = new ParsedPath(originalFrom);
 							rewrite(parsed, oldPath, newPath);
 							rewrittenFrom = parsed.toString();
+							// we shouldn't turn absolute references into relative ones!
+							if (originalFrom.startsWith("/") && !rewrittenFrom.startsWith("/")) {
+								rewrittenFrom = "/" + rewrittenFrom;
+							}
 						}
 					}
 					else {
@@ -339,6 +347,10 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 						ParsedPath parsed = new ParsedPath(originalTo);
 						rewrite(parsed, oldPath, newPath);
 						rewrittenTo = parsed.toString();
+						// we shouldn't turn absolute references into relative ones!
+						if (originalTo.startsWith("/") && !rewrittenTo.startsWith("/")) {
+							rewrittenTo = "/" + rewrittenTo;
+						}
 					}
 					else {
 						rewrittenTo = "=" + rewriteQuery(originalTo.substring(1), oldPath, newPath);
@@ -356,6 +368,10 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 					ParsedPath parsed = new ParsedPath(original);
 					rewrite(parsed, oldPath, newPath);
 					String rewritten = parsed.toString();
+					// we shouldn't turn absolute references into relative ones!
+					if (original.startsWith("/") && !rewritten.startsWith("/")) {
+						rewritten = "/" + rewritten;
+					}
 					if (!rewritten.equals(original)) {
 						updated = true;
 						System.out.println("Updating for 'query' from '" + original + "' to '" + rewritten + "'");
@@ -459,7 +475,8 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 	}
 	
 	public static void main(String...args) {
-		System.out.println(rewriteQuery("0 - input/doc/unnamed0 * -1", new ParsedPath("input/doc/haha"), new ParsedPath("input/doc/test")));
+//		System.out.println(rewriteQuery("0 - input/doc/unnamed0 * -1", new ParsedPath("input/doc/haha"), new ParsedPath("input/doc/test")));
+		System.out.println(rewriteQuery("connectionId = /input/connectionId", new ParsedPath("taskProvider/transientErrors/description"), new ParsedPath("taskProvider/transientErrors/message")));
 	}
 	
 	private static String rewriteQuery(String query, ParsedPath oldPath, ParsedPath newPath) {
@@ -473,12 +490,18 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				for (int i = lastEnd; i < part.getToken().getStart(); i++) {
 					builder.append(" ");
 				}
+				System.out.println(part.getToken().getContent());
 				lastEnd = part.getToken().getEnd();
 				if (part.getType() == QueryPart.Type.VARIABLE) {
 					if (depth == 0) {
 						ParsedPath path = new ParsedPath(part.getToken().getContent());
 						rewrite(path, oldPath, newPath);
-						builder.append(path.toString());
+						String rewrittenPath = path.toString();
+						// we shouldn't turn absolute references into relative ones!
+						if (part.getToken().getContent().startsWith("/") && !rewrittenPath.startsWith("/")) {
+							rewrittenPath = "/" + rewrittenPath;
+						}
+						builder.append(rewrittenPath);
 					}
 					else {
 						logger.warn("[!] Found variables at depth that may require rewriting, this is not supported yet");

@@ -397,6 +397,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		FXMLLoader loader = controller.load("vmservice.fxml", "Service", false);
 		final VMServiceController serviceController = loader.getController();
 		
+		BooleanProperty locked = controller.hasLock(getId(service));
+		BooleanBinding notLocked = locked.not();
+		
 		// the top part is the service, the bottom is a tabpane with input/output & mapping
 		SplitPane splitPane = new SplitPane();
 		
@@ -467,7 +470,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 		
-		serviceTree.rootProperty().set(new StepTreeItem(service.getRoot(), null, false));
+		serviceTree.rootProperty().set(new StepTreeItem(service.getRoot(), null, false, locked));
 		serviceTree.getRootCell().expandedProperty().set(true);
 		// disable map tab
 		serviceController.getTabMap().setDisable(true);
@@ -664,9 +667,6 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getTxtInterface().setText(value == null ? null : value.getId());
 		
 //		serviceController.getTxtInterface().setDisable(!isInterfaceEditable());
-		BooleanProperty locked = controller.hasLock(getId(service));
-		BooleanBinding notLocked = locked.not();
-		
 		serviceController.getHbxButtons().disableProperty().bind(notLocked);
 		serviceController.getTxtInterface().disableProperty().bind(notLocked.or(new SimpleBooleanProperty(!isInterfaceEditable())));
 		
@@ -775,7 +775,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							resolve.refresh();
 						}
 						// reload remotely
-						MainController.getInstance().getServer().getRemote().reload(entry.getParent().getId());
+						MainController.getInstance().getAsynchronousRemoteServer().reload(entry.getParent().getId());
+						MainController.getInstance().getCollaborationClient().created(entry.getId(), "Extracted service");
+//						MainController.getInstance().getServer().getRemote().reload(entry.getParent().getId());
 						
 						StepGroup lastParent = null;
 						// remove the steps from the old service
