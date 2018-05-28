@@ -164,7 +164,7 @@ public class InvokeWrapper {
 							for (Property<?> property : targetProperties) {
 								Object value = values.get(property.getName());
 								if (value != null) {
-									if (!String.class.isAssignableFrom(property.getValueClass())) {
+									if (!String.class.isAssignableFrom(property.getValueClass()) && !((String) value).startsWith("=")) {
 										value = ConverterFactory.getInstance().getConverter().convert(value, property.getValueClass());
 									}
 									list.add(new ValueImpl(property, value));
@@ -210,7 +210,7 @@ public class InvokeWrapper {
 								invoke.getTargetProperties().remove(property.getName());
 							}
 							else {
-								if (!String.class.isAssignableFrom(property.getValueClass())) {
+								if (!String.class.isAssignableFrom(property.getValueClass()) && value != null && !(value instanceof String)) {
 									value = ConverterFactory.getInstance().getConverter().convert(value, String.class);
 								}
 								invoke.getTargetProperties().put(property.getName(), (String) value);

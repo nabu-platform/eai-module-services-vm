@@ -1,29 +1,19 @@
 package be.nabu.eai.module.services.vm;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-import nabu.misc.cluster.Services;
-import be.nabu.eai.authentication.api.PasswordAuthenticator;
 import be.nabu.eai.developer.managers.base.BaseConfigurationGUIManager;
-import be.nabu.eai.module.cluster.ClusterArtifact;
+import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.module.services.vm.api.ServiceExecutor;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.property.api.Property;
-import be.nabu.libs.property.api.Value;
-import be.nabu.libs.services.CombinedServiceRunner;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
-import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ClusteredServiceRunner;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.DefinedServiceInterface;
@@ -32,14 +22,10 @@ import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceResult;
 import be.nabu.libs.services.api.ServiceRunnableObserver;
 import be.nabu.libs.services.api.ServiceRunner;
-import be.nabu.libs.services.fixed.FixedInputService;
 import be.nabu.libs.services.pojo.POJOUtils;
 import be.nabu.libs.services.vm.api.ExecutorProvider;
 import be.nabu.libs.types.api.ComplexContent;
-import be.nabu.libs.types.api.ComplexType;
-import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Element;
-import be.nabu.libs.types.structure.Structure;
 
 // make sure that we validate (at design time) that the service has no output (or no mandatory output?) when selecting $all
 public class RepositoryExecutorProvider implements ExecutorProvider {
@@ -211,6 +197,11 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 				for (Element<?> element : inputExtensions) {
 					properties.addAll(BaseConfigurationGUIManager.createProperty(element));
 				}
+			}
+		}
+		for (Property<?> property: properties) {
+			if (property instanceof SimpleProperty) {
+				((SimpleProperty<?>) property).setEvaluatable(true);
 			}
 		}
 		return properties;

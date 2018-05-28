@@ -490,7 +490,6 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 				for (int i = lastEnd; i < part.getToken().getStart(); i++) {
 					builder.append(" ");
 				}
-				System.out.println(part.getToken().getContent());
 				lastEnd = part.getToken().getEnd();
 				if (part.getType() == QueryPart.Type.VARIABLE) {
 					if (depth == 0) {

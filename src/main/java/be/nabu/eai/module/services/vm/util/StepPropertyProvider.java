@@ -41,7 +41,10 @@ public class StepPropertyProvider implements PropertyUpdater {
 	public Set<Property<?>> getSupportedProperties() {
 		Set<Property<?>> properties = new LinkedHashSet<Property<?>>();
 		properties.add(new CommentProperty());
-		properties.add(new LabelProperty());
+		// can't set a label if there is no parent as there is no one to execute it, note that basestep validation will throw a validation error if you set it (no parent pipeline to retrieve)
+		if (step.getParent() != null) {
+			properties.add(new LabelProperty());
+		}
 		properties.add(new StepNameProperty());
 		if (step instanceof Break) {
 			properties.add(new BreakCountProperty());
@@ -133,7 +136,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 		else if (step instanceof Catch) {
 			if (property instanceof VariableProperty) {
 				String variableName = (String) value;
-				if (ElementTreeItem.isValidName(variableName)) {
+				if (variableName == null || ElementTreeItem.isValidName(variableName)) {
 					if (((Catch) step).getVariable() != null && value != null && !parentHasVariable(step, ((Catch) step).getVariable())) {
 						ElementTreeItem.renameVariable(MainController.getInstance(), ((Catch) step).getVariable(), variableName);
 					}
@@ -145,12 +148,14 @@ public class StepPropertyProvider implements PropertyUpdater {
 			}
 			else if (property instanceof ExceptionProperty) {
 				List<Class<? extends Exception>> classes = new ArrayList<Class<? extends Exception>>();
-				for (String type : ((String) value).split("\\|")) {
-					try {
-						classes.add((Class<? extends Exception>) Class.forName(type.trim()));
-					}
-					catch (ClassNotFoundException e) {
-						messages.add(new ValidationMessage(Severity.ERROR, "The throwable type " + type + " is incorrect"));
+				if (value != null && !((String) value).isEmpty()) {
+					for (String type : ((String) value).split("\\|")) {
+						try {
+							classes.add((Class<? extends Exception>) Thread.currentThread().getContextClassLoader().loadClass(type.trim()));
+						}
+						catch (ClassNotFoundException e) {
+							messages.add(new ValidationMessage(Severity.ERROR, "The throwable type " + type + " is incorrect"));
+						}
 					}
 				}
 				((Catch) step).setTypes(classes);
@@ -162,7 +167,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 			}
 			else if (property instanceof VariableProperty) {
 				String variableName = (String) value;
-				if (ElementTreeItem.isValidName(variableName)) {
+				if (variableName == null || ElementTreeItem.isValidName(variableName)) {
 					if (((For) step).getVariable() != null && value != null && !parentHasVariable(step, ((For) step).getVariable())) {
 						ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getVariable(), variableName);
 					}
@@ -174,7 +179,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 			}
 			else if (property instanceof IndexProperty) {
 				String variableName = (String) value;
-				if (ElementTreeItem.isValidName(variableName)) {
+				if (variableName == null || ElementTreeItem.isValidName(variableName)) {
 					if (((For) step).getIndex() != null && value != null && !parentHasVariable(step, ((For) step).getIndex())) {
 						ElementTreeItem.renameVariable(MainController.getInstance(), ((For) step).getIndex(), variableName);
 					}
