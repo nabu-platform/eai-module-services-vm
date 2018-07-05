@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,14 +123,14 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 
 	@Override
 	public List<String> getReferences(VMService artifact) throws IOException {
-		List<String> references = new ArrayList<String>();
+		Set<String> references = new HashSet<String>();
 		// add the dependent interface (if any)
 		references.addAll(getInterfaceReferences(artifact));
 		// all the type references (including input and output) are in the pipeline
 		references.addAll(StructureManager.getComplexReferences(artifact.getPipeline()));
 		// another reference are all the services that are invoked
 		references.addAll(getReferencesForStep(artifact.getRoot()));
-		return references;
+		return new ArrayList<String>(references);
 	}
 
 	private static List<String> getInterfaceReferences(VMService artifact) {
@@ -151,11 +153,10 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 					references.add(id);
 				}
 				String target = ((Invoke) step).getTarget();
-				if (target != null) {
+				// no runtime interpreted targets or $any, $all...
+				if (target != null && !target.startsWith("=") && !target.startsWith("$")) {
 					String[] split = target.split(":");
-					if (split.length > 1) {
-						references.add(split[0]);
-					}
+					references.add(split[0]);
 				}
 			}
 			if (step instanceof StepGroup) {
