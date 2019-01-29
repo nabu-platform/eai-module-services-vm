@@ -52,6 +52,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 		else if (step instanceof Catch) {
 			properties.add(new VariableProperty());
 			properties.add(new ExceptionProperty());
+			properties.add(new SuppressExceptionProperty());
 		}
 		else if (step instanceof For) {
 			properties.add(new QueryProperty());
@@ -62,8 +63,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 			properties.add(new QueryProperty());
 		}
 		else if (step instanceof Throw) {
-			properties.add(new MessageProperty());
 			properties.add(new CodeProperty());
+			properties.add(new MessageProperty());
+			properties.add(new DescriptionProperty());
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
@@ -90,6 +92,7 @@ public class StepPropertyProvider implements PropertyUpdater {
 				types = types == null ? type.getName() : types + type.getName();
 			}
 			values.add(new ValueImpl<String>(new ExceptionProperty(), types));
+			values.add(new ValueImpl<Boolean>(new SuppressExceptionProperty(), ((Catch) step).getSuppressException()));
 		}
 		else if (step instanceof For) {
 			values.add(new ValueImpl<String>(new QueryProperty(), ((For) step).getQuery()));
@@ -100,8 +103,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 			values.add(new ValueImpl<String>(new QueryProperty(), ((Switch) step).getQuery()));
 		}
 		else if (step instanceof Throw) {
-			values.add(new ValueImpl<String>(new MessageProperty(), ((Throw) step).getMessage()));
 			values.add(new ValueImpl<String>(new CodeProperty(), ((Throw) step).getCode()));
+			values.add(new ValueImpl<String>(new MessageProperty(), ((Throw) step).getMessage()));
+			values.add(new ValueImpl<String>(new DescriptionProperty(), ((Throw) step).getDescription()));
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
@@ -160,6 +164,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 				}
 				((Catch) step).setTypes(classes);
 			}
+			else if (property instanceof SuppressExceptionProperty) {
+				((Catch) step).setSuppressException((Boolean) value);
+			}
 		}
 		else if (step instanceof For) {
 			if (property instanceof QueryProperty) {
@@ -199,6 +206,9 @@ public class StepPropertyProvider implements PropertyUpdater {
 			}
 			else if (property instanceof CodeProperty) {
 				((Throw) step).setCode((String) value);
+			}
+			else if (property instanceof DescriptionProperty) {
+				((Throw) step).setDescription((String) value);
 			}
 		}
 		else if (step instanceof Sequence) {
@@ -303,6 +313,21 @@ public class StepPropertyProvider implements PropertyUpdater {
 			return String.class;
 		}
 	}
+	
+	public static class SuppressExceptionProperty extends BaseProperty<Boolean> {
+		@Override
+		public String getName() {
+			return "suppressException";
+		}
+		@Override
+		public Validator<Boolean> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<Boolean> getValueClass() {
+			return Boolean.class;
+		}
+	}
 
 	public static class StepNameProperty extends BaseProperty<String> {
 		@Override
@@ -353,6 +378,21 @@ public class StepPropertyProvider implements PropertyUpdater {
 		@Override
 		public String getName() {
 			return "message";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class DescriptionProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "description";
 		}
 		@Override
 		public Validator<String> getValidator() {

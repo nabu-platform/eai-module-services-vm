@@ -310,7 +310,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 
 	@Override
 	public String getArtifactName() {
-		return "Flow Service";
+		return "Blox Service";
 	}
 
 	@Override

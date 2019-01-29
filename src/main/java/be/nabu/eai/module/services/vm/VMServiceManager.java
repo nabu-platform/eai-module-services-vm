@@ -108,6 +108,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 
 	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence) throws IOException {
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
+		sequenceBinding.setMultilineAttributes(true);
 		try {
 			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(sequence));
 		}
