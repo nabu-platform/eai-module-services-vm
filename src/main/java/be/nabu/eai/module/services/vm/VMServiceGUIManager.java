@@ -567,7 +567,19 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		TreeDragDrop.makeDroppable(serviceTree, new TreeDropListener<Step>() {
 			@Override
 			public boolean canDrop(String dataType, TreeCell<Step> target, TreeCell<?> dragged, TransferMode transferMode) {
-				if (!dataType.equals(DATA_TYPE_STEP)) {
+				String serviceDataType = RepositoryBrowser.getDataType(DefinedService.class);
+				// if we drop a service, wrap it in a map step
+				if (serviceDataType.equals(dataType)) {
+					if (target.getItem().itemProperty().get() instanceof StepGroup) {
+						if (target.getItem().itemProperty().get() instanceof LimitedStepGroup) {
+							return ((LimitedStepGroup) target.getItem().itemProperty().get()).getAllowedSteps().contains(Map.class);
+						}
+						else {
+							return true;
+						}
+					}
+				}
+				else if (!dataType.equals(DATA_TYPE_STEP)) {
 					return false;
 				}
 				else if (target.getItem().itemProperty().get() instanceof StepGroup) {
@@ -589,15 +601,33 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			@Override
 			public void drop(String dataType, TreeCell<Step> target, TreeCell<?> dragged, TransferMode transferMode) {
 				StepGroup newParent = (StepGroup) target.getItem().itemProperty().get();
-				TreeCell<Step> draggedElement = (TreeCell<Step>) dragged;
-				StepGroup originalParent = (StepGroup) draggedElement.getItem().getParent().itemProperty().get();
-				if (originalParent.getChildren().remove(draggedElement.getItem().itemProperty().get())) {
-					newParent.getChildren().add(draggedElement.getItem().itemProperty().get());
-					draggedElement.getItem().itemProperty().get().setParent(newParent);
+				String serviceDataType = RepositoryBrowser.getDataType(DefinedService.class);
+				if (serviceDataType.equals(dataType)) {
+					TreeCell<Entry> draggedEntry = (TreeCell<Entry>) dragged;
+					Entry entry = draggedEntry.getItem().itemProperty().get();
+					Map map = new Map();
+					Invoke invoke = new Invoke();
+					invoke.setServiceId(entry.getId());
+					invoke.setParent(map);
+					invoke.setX(30);
+					invoke.setY(30);
+					map.setParent(newParent);
+					map.getChildren().add(invoke);
+					newParent.getChildren().add(map);
+					target.expandedProperty().set(true);
+					((StepTreeItem) target.getItem()).refresh();
 				}
-				// refresh both
-				((StepTreeItem) target.getItem()).refresh();
-				((StepTreeItem) dragged.getParent().getItem()).refresh();
+				else {
+					TreeCell<Step> draggedElement = (TreeCell<Step>) dragged;
+					StepGroup originalParent = (StepGroup) draggedElement.getItem().getParent().itemProperty().get();
+					if (originalParent.getChildren().remove(draggedElement.getItem().itemProperty().get())) {
+						newParent.getChildren().add(draggedElement.getItem().itemProperty().get());
+						draggedElement.getItem().itemProperty().get().setParent(newParent);
+					}
+					// refresh both
+					((StepTreeItem) target.getItem()).refresh();
+					((StepTreeItem) dragged.getParent().getItem()).refresh();
+				}
 				MainController.getInstance().setChanged();
 			}
 		});
@@ -1024,10 +1054,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 //		serviceController.getPanLeft().prefWidthProperty().bind(leftTree.widthProperty());
 //		serviceController.getPanRight().prefWidthProperty().bind(rightTree.widthProperty());
 		
-		serviceController.getPanMiddle().addEventHandler(DragEvent.DRAG_OVER, new EventHandler<DragEvent>() {
+		EventHandler<DragEvent> serviceDragOverHandler = new EventHandler<DragEvent>() {
 			@Override
 			public void handle(DragEvent event) {
-				if (serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get() instanceof Map) {
+				if (serviceTree.getSelectionModel().getSelectedItem() == null || serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get() instanceof Map) {
 					Dragboard dragboard = event.getDragboard();
 					if (dragboard != null) {
 						Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
@@ -1042,19 +1072,41 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					}
 				}
 			}
-		});
-		serviceController.getPanMiddle().addEventHandler(DragEvent.DRAG_DROPPED, new EventHandler<DragEvent>() {
+		};
+		serviceController.getPanMiddle().addEventHandler(DragEvent.DRAG_OVER, serviceDragOverHandler);
+		serviceTree.addEventHandler(DragEvent.DRAG_OVER, serviceDragOverHandler);		
+		
+		EventHandler<DragEvent> serviceDragDropHandler = new EventHandler<DragEvent>() {
 			@Override
 			public void handle(DragEvent event) {
-				if (serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get() instanceof Map) {
-					Map target = (Map) serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get();
-					Dragboard dragboard = event.getDragboard();
-					if (dragboard != null) {
-						Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
-						// this will be the path in the tree
-						if (content != null) {
-							String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
-							if (serviceId != null && (serviceInvokeAcceptor == null || serviceInvokeAcceptor.accept(serviceId))) {
+				Dragboard dragboard = event.getDragboard();
+				if (dragboard != null && !event.isDropCompleted() && !event.isConsumed()) {
+					Object content = dragboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
+					// this will be the path in the tree
+					if (content != null) {
+						String serviceId = controller.getRepositoryBrowser().getControl().resolve((String) content).itemProperty().get().getId();
+						if (serviceId != null && (serviceInvokeAcceptor == null || serviceInvokeAcceptor.accept(serviceId))) {
+							Step step = serviceTree.getSelectionModel().getSelectedItem() == null ? serviceTree.rootProperty().get().itemProperty().get() : serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get();
+							if (!(step instanceof Map) && step instanceof StepGroup) {
+								if (!(step instanceof LimitedStepGroup)
+										|| ((LimitedStepGroup) step).getAllowedSteps().contains(Map.class)) {
+									Map map = new Map();
+									map.setParent((StepGroup) step);
+									((StepGroup) step).getChildren().add(map);
+									step = map;
+									if (serviceTree.getSelectionModel().getSelectedItem() != null) {
+										serviceTree.getSelectionModel().getSelectedItem().expandedProperty().set(true);
+										serviceTree.getSelectionModel().getSelectedItem().getItem().refresh();
+									}
+									else {
+										serviceTree.getTreeCell(serviceTree.rootProperty().get()).expandedProperty().set(true);
+										serviceTree.rootProperty().get().refresh();
+									}
+								}
+							}
+							if (step instanceof Map) {
+								Map target = (Map) step;
+
 								Invoke invoke = new Invoke();
 								invoke.setParent(target);
 								invoke.setServiceId(serviceId);
@@ -1064,16 +1116,26 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								invoke.setX(event.getX());
 								invoke.setY(event.getY());
 								target.getChildren().add(invoke);
-								drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree, locked);
-								serviceTree.getSelectionModel().getSelectedItem().refresh();
+								if (serviceTree.getSelectionModel().getSelectedItem() != null) {
+									drawInvoke(controller, invoke, invokeWrappers, serviceController, service, serviceTree, locked);
+									serviceTree.getSelectionModel().getSelectedItem().refresh();
+								}
+								else {
+									serviceTree.getTreeCell(serviceTree.rootProperty().get()).refresh();
+								}
 								MainController.getInstance().setChanged();
 								MainController.getInstance().closeDragSource();
+								event.setDropCompleted(true);
+								event.consume();
 							}
 						}
 					}
 				}
 			}
-		});
+		};
+		serviceController.getPanMiddle().addEventHandler(DragEvent.DRAG_DROPPED, serviceDragDropHandler);
+		serviceTree.addEventHandler(DragEvent.DRAG_DROPPED, serviceDragDropHandler);
+		
 		serviceController.getPanMap().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {

@@ -66,6 +66,8 @@ public class StepPropertyProvider implements PropertyUpdater {
 			properties.add(new CodeProperty());
 			properties.add(new MessageProperty());
 			properties.add(new DescriptionProperty());
+			properties.add(new AliasProperty());
+			properties.add(new RealmProperty());
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
@@ -106,6 +108,8 @@ public class StepPropertyProvider implements PropertyUpdater {
 			values.add(new ValueImpl<String>(new CodeProperty(), ((Throw) step).getCode()));
 			values.add(new ValueImpl<String>(new MessageProperty(), ((Throw) step).getMessage()));
 			values.add(new ValueImpl<String>(new DescriptionProperty(), ((Throw) step).getDescription()));
+			values.add(new ValueImpl<String>(new AliasProperty(), ((Throw) step).getAlias()));
+			values.add(new ValueImpl<String>(new RealmProperty(), ((Throw) step).getRealm()));
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
@@ -209,6 +213,12 @@ public class StepPropertyProvider implements PropertyUpdater {
 			}
 			else if (property instanceof DescriptionProperty) {
 				((Throw) step).setDescription((String) value);
+			}
+			else if (property instanceof AliasProperty) {
+				((Throw) step).setAlias((String) value);
+			}
+			else if (property instanceof RealmProperty) {
+				((Throw) step).setRealm((String) value);
 			}
 		}
 		else if (step instanceof Sequence) {
@@ -408,6 +418,36 @@ public class StepPropertyProvider implements PropertyUpdater {
 		@Override
 		public String getName() {
 			return "code";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class AliasProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "alias";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class RealmProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "realm";
 		}
 		@Override
 		public Validator<String> getValidator() {

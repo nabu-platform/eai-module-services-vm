@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+
 import be.nabu.eai.developer.managers.base.BaseConfigurationGUIManager;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.module.services.vm.api.ServiceExecutor;
@@ -30,6 +33,7 @@ import be.nabu.libs.types.api.Element;
 // make sure that we validate (at design time) that the service has no output (or no mandatory output?) when selecting $all
 public class RepositoryExecutorProvider implements ExecutorProvider {
 
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	private static List<String> targets;
 	private Repository repository;
 	
@@ -57,7 +61,12 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 				return new ServiceRunner() {
 					@Override
 					public Future<ServiceResult> run(Service service, ExecutionContext context, ComplexContent input, ServiceRunnableObserver...observers) {
-						((ClusteredServiceRunner) repository.getServiceRunner()).runAnywhere(service, context, input, target.endsWith(":$any") ? target.substring(0, target.length() - ":$any".length()) : null);
+						try {
+							((ClusteredServiceRunner) repository.getServiceRunner()).runAnywhere(service, context, input, target.endsWith(":$any") ? target.substring(0, target.length() - ":$any".length()) : null);
+						}
+						catch (Exception e) {
+							logger.error("Could not run service" + (service instanceof DefinedService ? ": " + ((DefinedService) service).getId() : ""), e);
+						}
 						return null;
 					}
 				};
@@ -71,7 +80,12 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 				return new ServiceRunner() {
 					@Override
 					public Future<ServiceResult> run(Service service, ExecutionContext context, ComplexContent input, ServiceRunnableObserver...observers) {
-						((ClusteredServiceRunner) repository.getServiceRunner()).runEverywhere(service, context, input, target.endsWith(":$all") ? target.substring(0, target.length() - ":$all".length()) : null);
+						try {
+							((ClusteredServiceRunner) repository.getServiceRunner()).runEverywhere(service, context, input, target.endsWith(":$all") ? target.substring(0, target.length() - ":$all".length()) : null);
+						}
+						catch (Exception e) {
+							logger.error("Could not run service" + (service instanceof DefinedService ? ": " + ((DefinedService) service).getId() : ""), e);
+						}
 						return null;
 					}
 				};
