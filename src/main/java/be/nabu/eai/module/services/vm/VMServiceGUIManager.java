@@ -29,12 +29,14 @@ import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Orientation;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.Separator;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TextField;
@@ -513,9 +515,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Map.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, For.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Switch.class));		
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Throw.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Catch.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Finally.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Throw.class));
 		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Break.class));
 		
 		TextField search = new TextField();
