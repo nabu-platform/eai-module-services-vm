@@ -5,7 +5,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" prefHeight="470.0" prefWidth="357.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="be.nabu.eai.developer.controllers.VMServiceController">
+<AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" prefHeight="470.0" prefWidth="357.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="be.nabu.eai.module.services.vm.util.VMServiceController">
    <children>
    <SplitPane dividerPositions="0.5" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" orientation="VERTICAL" prefHeight="470.0" prefWidth="357.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
      <items>
@@ -14,7 +14,7 @@
                <VBox layoutX="39.0" layoutY="-32.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="230.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                   <children>
                      <HBox fx:id="hbxButtons" maxHeight="35.0" minHeight="35.0" prefHeight="35.0" prefWidth="200.0" VBox.vgrow="NEVER" />
-                        <ScrollPane fx:id="scrTop" fitToHeight="true" fitToWidth="true" pannable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="SOMETIMES">
+                        <ScrollPane fx:id="scrTop" fitToHeight="true" fitToWidth="true" pannable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <content>
                             <AnchorPane>
                                  <children>
@@ -23,6 +23,7 @@
                               </AnchorPane>
                           </content>
                         </ScrollPane>
+                        <HBox fx:id="hbxButtons2" maxHeight="35.0" minHeight="35.0" prefHeight="35.0" prefWidth="200.0" VBox.vgrow="NEVER" />
                   </children>
                </VBox>
             </children>
@@ -40,8 +41,13 @@
                                           <HBox>
                                              <children>
                                                 <CheckBox fx:id="chkValidateInput" contentDisplay="RIGHT" mnemonicParsing="false" text="Validate Input" />
-                                                <TextField fx:id="txtInterface" HBox.hgrow="ALWAYS" />
-                                                <MenuButton fx:id="mnuInterfaces" mnemonicParsing="false" text="Specifications" />
+                                                <HBox fx:id="boxInterface" HBox.hgrow="ALWAYS">
+	                                                <children>
+	                                                	<Label fx:id="lblInterface" text="Service Interface: "/>
+		                                                <TextField fx:id="txtInterface" HBox.hgrow="ALWAYS" />
+		                                                <MenuButton fx:id="mnuInterfaces" mnemonicParsing="false" text="Specifications" />
+	                                                </children>
+	                                            </HBox>
                                                 <CheckBox fx:id="chkValidateOutput" mnemonicParsing="false" text="Validate Output" />
                                              </children>
                                           </HBox>
@@ -71,7 +77,7 @@
                                  <children>
                                     <SplitPane dividerPositions="0.5, 0.5" prefHeight="200.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                        <items>
-                                          <ScrollPane fx:id="scrLeft" fitToHeight="true" fitToWidth="true" maxWidth="450.0" prefWidth="250.0" SplitPane.resizableWithParent="false">
+                                          <ScrollPane fx:id="scrLeft" fitToHeight="true" fitToWidth="true" prefWidth="250.0" SplitPane.resizableWithParent="false">
                                             <content>
                                               <AnchorPane fx:id="panLeft" />
                                             </content>
@@ -81,7 +87,7 @@
                                                 <AnchorPane fx:id="panMiddle" />
                                              </content>
                                           </ScrollPane>
-                                          <ScrollPane fx:id="scrRight" fitToHeight="true" fitToWidth="true" maxWidth="450.0" prefWidth="250.0" SplitPane.resizableWithParent="false">
+                                          <ScrollPane fx:id="scrRight" fitToHeight="true" fitToWidth="true" prefWidth="250.0" SplitPane.resizableWithParent="false">
                                              <content>
                                                 <AnchorPane fx:id="panRight" />
                                              </content>

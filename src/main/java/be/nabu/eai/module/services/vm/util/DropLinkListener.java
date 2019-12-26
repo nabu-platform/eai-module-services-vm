@@ -6,7 +6,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import be.nabu.eai.developer.MainController;
-import be.nabu.eai.developer.controllers.VMServiceController;
 import be.nabu.eai.module.services.vm.util.Mapping.RemoveMapping;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
@@ -121,7 +120,10 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 		// if there is a source invoke, we keep the root element as it refers to the pipeline
 		// however, for resolving purposes we don't want to use it
 		if (sourceInvoke != null) {
-			setDefaultIndexes(from.getChildPath(), (TreeItem<Element<?>>) dragged.getTree().rootProperty().get(), !toIsList);
+			// if you drag the root output, you don't have a childpath
+			if (from.getChildPath() != null) {
+				setDefaultIndexes(from.getChildPath(), (TreeItem<Element<?>>) dragged.getTree().rootProperty().get(), !toIsList);
+			}
 		}
 		else {
 			setDefaultIndexes(from, (TreeItem<Element<?>>) dragged.getTree().rootProperty().get(), !toIsList);

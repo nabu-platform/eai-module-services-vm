@@ -21,7 +21,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
-import be.nabu.eai.developer.controllers.VMServiceController;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
 import be.nabu.eai.developer.managers.util.ElementMarshallable;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;

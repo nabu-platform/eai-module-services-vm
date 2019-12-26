@@ -14,45 +14,6 @@ import java.util.ServiceLoader;
 import java.util.TreeMap;
 import java.util.UUID;
 
-import javafx.application.Platform;
-import javafx.beans.binding.BooleanBinding;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.ReadOnlyBooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.event.Event;
-import javafx.event.EventHandler;
-import javafx.fxml.FXMLLoader;
-import javafx.geometry.Orientation;
-import javafx.scene.Parent;
-import javafx.scene.control.Button;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.Separator;
-import javafx.scene.control.SplitPane;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.TransferMode;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +25,6 @@ import be.nabu.eai.developer.api.InterfaceLister.InterfaceDescription;
 import be.nabu.eai.developer.api.PortableArtifactGUIManager;
 import be.nabu.eai.developer.api.ValidationSelectableArtifactGUIManager;
 import be.nabu.eai.developer.components.RepositoryBrowser;
-import be.nabu.eai.developer.controllers.VMServiceController;
 import be.nabu.eai.developer.events.ArtifactMoveEvent;
 import be.nabu.eai.developer.events.VariableRenameEvent;
 import be.nabu.eai.developer.managers.ServiceGUIManager;
@@ -91,6 +51,7 @@ import be.nabu.eai.module.services.vm.util.RemoveLinkListener;
 import be.nabu.eai.module.services.vm.util.StepClipboardHandler;
 import be.nabu.eai.module.services.vm.util.StepPropertyProvider;
 import be.nabu.eai.module.services.vm.util.StepTreeItem;
+import be.nabu.eai.module.services.vm.util.VMServiceController;
 import be.nabu.eai.module.types.structure.StructureGUIManager;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
@@ -100,6 +61,8 @@ import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.jfx.control.tree.Marshallable;
+import be.nabu.jfx.control.tree.MovableTreeItem;
+import be.nabu.jfx.control.tree.MovableTreeItem.Direction;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeItem;
@@ -145,6 +108,49 @@ import be.nabu.libs.types.structure.Structure;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
+import javafx.application.Platform;
+import javafx.beans.binding.BooleanBinding;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.Event;
+import javafx.event.EventHandler;
+import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.Separator;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.input.TransferMode;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 
 public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService>, ConfigurableGUIManager<VMService>, ValidationSelectableArtifactGUIManager<VMService> {
 
@@ -511,14 +517,24 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Sequence.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Map.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, For.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Switch.class));		
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Throw.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Catch.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Finally.class));
-		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Break.class));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Sequence.class, notLocked));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Map.class, notLocked));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, For.class, notLocked));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Switch.class, notLocked));		
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Throw.class, notLocked));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Catch.class, notLocked));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Finally.class, notLocked));
+		serviceController.getHbxButtons().getChildren().add(createAddButton(serviceTree, Break.class, notLocked));
+		
+		serviceController.getHbxButtons2().getChildren().add(createMoveButton(serviceTree, Direction.LEFT, notLocked));
+		serviceController.getHbxButtons2().getChildren().add(createMoveButton(serviceTree, Direction.RIGHT, notLocked));
+		serviceController.getHbxButtons2().getChildren().add(createMoveButton(serviceTree, Direction.UP, notLocked));
+		serviceController.getHbxButtons2().getChildren().add(createMoveButton(serviceTree, Direction.DOWN, notLocked));
+		
+		serviceController.getHbxButtons().setPadding(new Insets(10));
+		serviceController.getHbxButtons2().setPadding(new Insets(10));
+		serviceController.getHbxButtons().setAlignment(Pos.TOP_LEFT);
+		serviceController.getHbxButtons2().setAlignment(Pos.BOTTOM_LEFT);
 		
 		TextField search = new TextField();
 		search.textProperty().addListener(new ChangeListener<String>() {
@@ -530,7 +546,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				}
 			}
 		});
-		serviceController.getHbxButtons().getChildren().add(search);
+		HBox searchBox = new HBox();
+		Label searchLabel = new Label("Search: ");
+		searchLabel.setPadding(new Insets(4, 10, 0, 5));
+		searchBox.setPadding(new Insets(0, 0, 0, 10));
+		searchBox.getChildren().addAll(searchLabel, search);
+		
+		serviceController.getHbxButtons().getChildren().add(searchBox);
 
 		serviceController.getPanService().getChildren().add(serviceTree);
 		
@@ -699,7 +721,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getTxtInterface().setText(value == null ? null : value.getId());
 		
 //		serviceController.getTxtInterface().setDisable(!isInterfaceEditable());
-		serviceController.getHbxButtons().disableProperty().bind(notLocked);
+//		serviceController.getHbxButtons().disableProperty().bind(notLocked);
 		serviceController.getTxtInterface().disableProperty().bind(notLocked.or(new SimpleBooleanProperty(!isInterfaceEditable())));
 		
 		// show the service interface
@@ -737,6 +759,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		serviceController.getChkValidateInput().disableProperty().bind(notLocked);
 		serviceController.getChkValidateOutput().disableProperty().bind(notLocked);
+		
+		serviceController.getBoxInterface().setPadding(new Insets(10, 20, 10, 20));
+		serviceController.getLblInterface().setPadding(new Insets(4, 10, 0, 5));
+		serviceController.getChkValidateInput().setPadding(new Insets(14, 20, 10, 15));
+		serviceController.getChkValidateOutput().setPadding(new Insets(14, 20, 10, 15));
+		
+//		serviceController.getChkValidateInput().setStyle("-fx-border")
 		
 		// @2016-01-15: fun fact: i added container types which can contain for example services
 		// now the container upon save() will redraw the container (to ensure if artifacts impact one another they show the latest version)
@@ -1142,7 +1171,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			@Override
 			public void handle(KeyEvent event) {
 				if (locked.get() && event.getCode() == KeyCode.D && event.isControlDown() && lastSelectedInputElement.get() != null && lastSelectedOutputElement.get() != null) {
-					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), event.isShiftDown(), locked);
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), event.isShiftDown(), locked, false);
+				}
+				else if (locked.get() && event.getCode() == KeyCode.D && event.isAltDown() && lastSelectedInputElement.get() != null && lastSelectedOutputElement.get() != null) {
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), event.isShiftDown(), locked, true);
 				}
 			}
 		});
@@ -1351,12 +1383,31 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
-	private Button createAddButton(Tree<Step> serviceTree, Class<? extends Step> clazz) {
+	private Button createAddButton(Tree<Step> serviceTree, Class<? extends Step> clazz, BooleanBinding notLocked) {
 		Button button = new Button();
 		button.setTooltip(new Tooltip(clazz.getSimpleName()));
 		button.setGraphic(MainController.loadFixedSizeGraphic(getIcon(clazz)));
 		button.addEventHandler(ActionEvent.ACTION, new ServiceAddHandler(serviceTree, clazz));
+		button.disableProperty().bind(notLocked);
 		addButtons.put(clazz, button);
+		return button;
+	}
+	
+	private Node createMoveButton(Tree<Step> serviceTree, Direction direction, BooleanBinding notLocked) {
+		Button button = new Button();
+		button.setTooltip(new Tooltip(direction.name()));
+		button.setGraphic(MainController.loadFixedSizeGraphic("move/" + direction.name().toLowerCase() + ".png"));
+		button.disableProperty().bind(notLocked);
+		button.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				TreeCell<Step> cell = serviceTree.getSelectionModel().getSelectedItem();
+				if (cell != null) {
+					TreeItem<Step> item = cell.getItem();
+					((MovableTreeItem<?>) item).move(direction);
+				}
+			}
+		});
 		return button;
 	}
 	
@@ -1437,7 +1488,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
-	private void link(VMService service, VMServiceController serviceController, TreeCell<Element<?>> from, TreeCell<Element<?>> to, boolean mask, ReadOnlyBooleanProperty lock) {
+	private void link(VMService service, VMServiceController serviceController, TreeCell<Element<?>> from, TreeCell<Element<?>> to, boolean mask, ReadOnlyBooleanProperty lock, boolean recursiveMapping) {
 		boolean alreadyMapped = false;
 		for (Mapping mapping : mappings.values()) {
 			if (mapping.getFrom().equals(from) && mapping.getTo().equals(to)) {
@@ -1449,7 +1500,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			Element<?> fromElement = from.getItem().itemProperty().get();
 			Element<?> toElement = to.getItem().itemProperty().get();
 			// if we can straight map it, do that
-			if (service.isMappable(fromElement, toElement) || (fromElement.getType() instanceof ComplexType && toElement.getType() instanceof ComplexType && mask)) {
+			if ((service.isMappable(fromElement, toElement) || (fromElement.getType() instanceof ComplexType && toElement.getType() instanceof ComplexType && mask)) && !recursiveMapping) {
 				DropLinkListener.drawMapping(serviceController, serviceTree, mappings, to, from, mask, lock);
 			}
 			// if they are both complex types, we can do a best effort mapping by name
@@ -1469,7 +1520,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							if (cell != null) {
 								TreeCell<Element<?>> target = toFields.get(child.itemProperty().get().getName());
 								if (target != null) {
-									link(service, serviceController, cell, target, mask, lock);
+									link(service, serviceController, cell, target, mask, lock, false);
 								}
 							}
 						}
@@ -1499,7 +1550,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			linkButton.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent arg0) {
-					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), arg0.getButton() == MouseButton.SECONDARY, controller.hasLock(actualId));
+					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), arg0.getButton() == MouseButton.SECONDARY, controller.hasLock(actualId), false);
 				}
 			});
 			
@@ -1662,7 +1713,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		Tree<Element<?>> fromTree;
 		// this means you are mapping it from another invoke, use that output tree to find the element
 		if (invokeWrappers.containsKey(from.getName())) {
-			fromElement = find(invokeWrappers.get(from.getName()).getOutput().rootProperty().get(), from.getChildPath());
+			fromElement = from.getChildPath() != null ? find(invokeWrappers.get(from.getName()).getOutput().rootProperty().get(), from.getChildPath()) : invokeWrappers.get(from.getName()).getOutput().rootProperty().get();
 			fromTree = invokeWrappers.get(from.getName()).getOutput();
 		}
 		// otherwise, it's from the pipeline
