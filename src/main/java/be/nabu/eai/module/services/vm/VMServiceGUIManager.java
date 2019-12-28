@@ -536,8 +536,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		serviceController.getHbxButtons().setPadding(new Insets(10));
 		serviceController.getHbxButtons2().setPadding(new Insets(10));
-		serviceController.getHbxButtons().setAlignment(Pos.TOP_LEFT);
-		serviceController.getHbxButtons2().setAlignment(Pos.BOTTOM_LEFT);
+		serviceController.getHbxButtons().setAlignment(Pos.TOP_CENTER);
+		serviceController.getHbxButtons2().setAlignment(Pos.BOTTOM_CENTER);
 		
 		TextField search = new TextField();
 		search.setPromptText("Search");
@@ -565,8 +565,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 
 		serviceController.getPanService().getChildren().add(serviceTree);
 		
-		serviceTree.prefWidthProperty().bind(serviceController.getPanService().widthProperty());
-
+//		serviceTree.prefWidthProperty().bind(serviceController.getPanService().widthProperty());
+		serviceTree.prefWidthProperty().bind(pane.widthProperty().subtract(25));
+		
 		Parent parent = loader.getRoot();
 		pane.getChildren().add(parent);
 		// make sure it is full size
@@ -959,7 +960,6 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						// resize
 						serviceController.getPanLeft().minWidthProperty().set(50);
 						serviceController.getPanRight().minWidthProperty().set(50);
-						serviceController.getPanRight().setStyle("-fx-background-color: #ffaaaa");
 						serviceController.getPanLeft().prefWidthProperty().set(100);
 						serviceController.getPanRight().prefWidthProperty().set(100);
 						
