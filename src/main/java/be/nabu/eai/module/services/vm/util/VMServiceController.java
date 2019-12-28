@@ -63,9 +63,6 @@ public class VMServiceController implements Initializable, Controller {
 	@FXML
 	private CheckBox chkValidateInput, chkValidateOutput;
 	
-	@FXML
-	private Label lblInterface;
-	
 	private List<Node> content;
 	private Scene scene;
 	
@@ -219,9 +216,4 @@ public class VMServiceController implements Initializable, Controller {
 	public HBox getBoxInterface() {
 		return boxInterface;
 	}
-
-	public Label getLblInterface() {
-		return lblInterface;
-	}
-	
 }

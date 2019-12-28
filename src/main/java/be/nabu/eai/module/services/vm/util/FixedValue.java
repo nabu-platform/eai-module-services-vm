@@ -12,9 +12,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
+import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.util.EAIDeveloperUtils;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.drag.TreeDragDrop;
@@ -50,8 +52,12 @@ public class FixedValue {
 	private Link link;
 	private TreeCell<Element<?>> cell;
 	private ImageView image;
+
+	private Repository repository;
+
+	private String sourceId;
 	
-	public static void allowFixedValue(final MainController controller, final java.util.Map<Link, FixedValue> fixedValues, final Tree<Step> serviceTree, final Tree<Element<?>> tree) {
+	public static void allowFixedValue(final MainController controller, final java.util.Map<Link, FixedValue> fixedValues, final Tree<Step> serviceTree, final Tree<Element<?>> tree, Repository repository, String sourceId) {
 		final SimpleTypeWrapper simpleTypeWrapper = SimpleTypeWrapperFactory.getInstance().getWrapper();
 		final TypeConverter typeConverter = TypeConverterFactory.getInstance().getConverter();
 		// the tree can be null for failed invokes (service does not exist etc)
@@ -65,7 +71,7 @@ public class FixedValue {
 							|| typeConverter.canConvert(new BaseTypeInstance(simpleTypeWrapper.wrap(String.class)), selected.getItem().itemProperty().get()))
 							|| (selected.getItem().itemProperty().get().getType() instanceof BeanType && ((BeanType<?>) selected.getItem().itemProperty().get().getType()).getBeanClass().equals(Object.class))) {
 						if (event.getClickCount() == 2) {
-							PropertyUpdater updater = new FixedValuePropertyUpdater(selected.getItem().itemProperty().get(), fixedValues, serviceTree, tree);
+							PropertyUpdater updater = new FixedValuePropertyUpdater(selected.getItem().itemProperty().get(), fixedValues, serviceTree, tree, repository, sourceId);
 							EAIDeveloperUtils.buildPopup(MainController.getInstance(), updater, "Update Fixed Value", null, true);
 						}
 					}
@@ -74,9 +80,11 @@ public class FixedValue {
 		}
 	}
 	
-	public FixedValue(MainController controller, TreeCell<Element<?>> cell, Link link) {
+	public FixedValue(MainController controller, TreeCell<Element<?>> cell, Link link, Repository repository, String sourceId) {
 		this.cell = cell;
 		this.link = link;
+		this.repository = repository;
+		this.sourceId = sourceId;
 		draw(controller, link);
 	}
 	
@@ -95,7 +103,7 @@ public class FixedValue {
 			@Override
 			public void handle(MouseEvent arg0) {
 				cell.show();
-				controller.showProperties(new LinkPropertyUpdater(link, null));
+				controller.showProperties(new LinkPropertyUpdater(link, null, repository, sourceId));
 			}
 		});
 		Tooltip.install(image, new Tooltip(link.getFrom()));
@@ -118,7 +126,7 @@ public class FixedValue {
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public static class FixedValuePropertyUpdater implements PropertyUpdater {
+	public static class FixedValuePropertyUpdater implements PropertyUpdaterWithSource {
 		
 		private SimpleProperty<?> property;
 		private Type type;
@@ -126,9 +134,13 @@ public class FixedValue {
 		private Tree<Element<?>> tree;
 		private Tree<Step> serviceTree;
 		private Element<?> element;
+		private String sourceId;
+		private Repository repository;
 		
-		public FixedValuePropertyUpdater(Element<?> element, java.util.Map<Link, FixedValue> fixedValues, Tree<Step> serviceTree, Tree<Element<?>> tree) {
+		public FixedValuePropertyUpdater(Element<?> element, java.util.Map<Link, FixedValue> fixedValues, Tree<Step> serviceTree, Tree<Element<?>> tree, Repository repository, String sourceId) {
 			this.element = element;
+			this.repository = repository;
+			this.sourceId = sourceId;
 			this.type = element.getType();
 			this.fixedValues = fixedValues;
 			this.serviceTree = serviceTree;
@@ -232,7 +244,7 @@ public class FixedValue {
 								link.setParent((Map) serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get());
 								((Map) serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get()).getChildren().add(link);
 							}
-							fixedValues.put(link, new FixedValue(MainController.getInstance(), selected, link));
+							fixedValues.put(link, new FixedValue(MainController.getInstance(), selected, link, repository, sourceId));
 						}
 					}
 				}
@@ -245,6 +257,16 @@ public class FixedValue {
 		@Override
 		public boolean isMandatory(Property<?> property) {
 			return false;
+		}
+
+		@Override
+		public String getSourceId() {
+			return sourceId;
+		}
+
+		@Override
+		public Repository getRepository() {
+			return repository;
 		}
 	}
 }

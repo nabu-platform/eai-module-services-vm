@@ -7,6 +7,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.module.services.vm.util.Mapping.RemoveMapping;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeItem;
@@ -28,14 +29,18 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 	private java.util.Map<Link, Mapping> mappings;
 	private MainController controller;
 	private ReadOnlyBooleanProperty lock;
+	private Repository repository;
+	private String sourceId;
 
-	public DropLinkListener(MainController controller, java.util.Map<Link, Mapping> mappings, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, ReadOnlyBooleanProperty lock) {
+	public DropLinkListener(MainController controller, java.util.Map<Link, Mapping> mappings, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, ReadOnlyBooleanProperty lock, Repository repository, String sourceId) {
 		this.controller = controller;
 		this.mappings = mappings;
 		this.service = service;
 		this.serviceController = serviceController;
 		this.serviceTree = serviceTree;
 		this.lock = lock;
+		this.repository = repository;
+		this.sourceId = sourceId;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -71,11 +76,11 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 	}
 	
 	private void draw(TreeCell<Element<?>> target, TreeCell<?> dragged) {
-		drawMapping(serviceController, serviceTree, mappings, target, dragged, MainController.getInstance().isKeyActive(KeyCode.CONTROL), lock);
+		drawMapping(serviceController, serviceTree, mappings, target, dragged, MainController.getInstance().isKeyActive(KeyCode.CONTROL), lock, repository, sourceId);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static void drawMapping(VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, TreeCell<Element<?>> target, TreeCell<?> dragged, boolean mask, ReadOnlyBooleanProperty lock) {
+	public static void drawMapping(VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, TreeCell<Element<?>> target, TreeCell<?> dragged, boolean mask, ReadOnlyBooleanProperty lock, Repository repository, String sourceId) {
 		Mapping mapping = new Mapping(serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
 		ParsedPath from = new ParsedPath(TreeDragDrop.getPath(dragged.getItem()));
 		Invoke sourceInvoke = null;
@@ -159,7 +164,7 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 		mapping.getShape().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent arg0) {
-				MainController.getInstance().showProperties(new LinkPropertyUpdater(link, mapping));
+				MainController.getInstance().showProperties(new LinkPropertyUpdater(link, mapping, repository, sourceId));
 			}
 		});
 		mapping.setRemoveMapping(new RemoveMapping() {

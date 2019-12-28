@@ -21,6 +21,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
+import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
 import be.nabu.eai.developer.managers.util.ElementMarshallable;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
@@ -30,6 +31,7 @@ import be.nabu.eai.developer.util.ElementClipboardHandler;
 import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeItem;
@@ -63,8 +65,10 @@ public class InvokeWrapper {
 	private MainController controller;
 	private ExecutorProvider executorProvider;
 	private ReadOnlyBooleanProperty lock;
+	private Repository repository;
+	private String sourceId;
 
-	public InvokeWrapper(MainController controller, Invoke invoke, Pane target, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, ReadOnlyBooleanProperty lock) {
+	public InvokeWrapper(MainController controller, Invoke invoke, Pane target, VMService service, VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, ReadOnlyBooleanProperty lock, Repository repository, String sourceId) {
 		this.controller = controller;
 		this.invoke = invoke;
 		this.target = target;
@@ -73,6 +77,8 @@ public class InvokeWrapper {
 		this.serviceController = serviceController;
 		this.mappings = mappings;
 		this.lock = lock;
+		this.repository = repository;
+		this.sourceId = sourceId;
 		this.executorProvider = new RepositoryExecutorProvider(controller.getRepository());
 	}
 	
@@ -110,6 +116,8 @@ public class InvokeWrapper {
 						treeCell.show();
 						treeCell.select();
 						tree.autoscroll();
+						MainController.getInstance().getStage().requestFocus();
+						tree.requestFocus();
 					}
 					event.consume();
 				}
@@ -145,7 +153,7 @@ public class InvokeWrapper {
 					hashSet.addAll(targetProperties);
 				}
 				
-				PropertyUpdater updater = new PropertyUpdater() {
+				PropertyUpdater updater = new PropertyUpdaterWithSource() {
 					@Override
 					public Set<Property<?>> getSupportedProperties() {
 						return hashSet;
@@ -222,6 +230,14 @@ public class InvokeWrapper {
 					public boolean isMandatory(Property<?> property) {
 						return true;
 					}
+					@Override
+					public String getSourceId() {
+						return sourceId;
+					}
+					@Override
+					public Repository getRepository() {
+						return repository;
+					}
 				};
 				controller.showProperties(updater);
 			}
@@ -245,7 +261,7 @@ public class InvokeWrapper {
 			input.set("invoke", invoke);
 			input.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getInputDefinition(), "input"), null, false, false));
 			input.getTreeCell(input.rootProperty().get()).expandedProperty().set(false);
-			TreeDragDrop.makeDroppable(input, new DropLinkListener(controller, mappings, this.service, serviceController, serviceTree, lock));
+			TreeDragDrop.makeDroppable(input, new DropLinkListener(controller, mappings, this.service, serviceController, serviceTree, lock, repository, sourceId));
 			input.getRootCell().getNode().getStyleClass().add("invokeTree");
 			
 			output = new Tree<Element<?>>(new ElementMarshallable());

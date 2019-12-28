@@ -43,9 +43,8 @@
                                                 <CheckBox fx:id="chkValidateInput" contentDisplay="RIGHT" mnemonicParsing="false" text="Validate Input" />
                                                 <HBox fx:id="boxInterface" HBox.hgrow="ALWAYS">
 	                                                <children>
-	                                                	<Label fx:id="lblInterface" text="Service Interface: "/>
 		                                                <TextField fx:id="txtInterface" HBox.hgrow="ALWAYS" />
-		                                                <MenuButton fx:id="mnuInterfaces" mnemonicParsing="false" text="Specifications" />
+		                                                <MenuButton fx:id="mnuInterfaces" mnemonicParsing="false" text="Definitions" />
 	                                                </children>
 	                                            </HBox>
                                                 <CheckBox fx:id="chkValidateOutput" mnemonicParsing="false" text="Validate Output" />

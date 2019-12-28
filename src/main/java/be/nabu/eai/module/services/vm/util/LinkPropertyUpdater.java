@@ -8,9 +8,10 @@ import java.util.Map;
 import java.util.Set;
 
 import be.nabu.eai.developer.MainController;
-import be.nabu.eai.developer.MainController.PropertyUpdater;
+import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.module.services.vm.VMServiceGUIManager;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.vm.step.Link;
@@ -19,15 +20,19 @@ import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.Validator;
 
-public class LinkPropertyUpdater implements PropertyUpdater {
+public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 
 	private static final SimpleProperty<Boolean> OPTIONAL_PROPERTY = new SimpleProperty<Boolean>("optional", Boolean.class, true);
 	private Link link;
 	private Mapping mapping;
+	private Repository repository;
+	private String sourceId;
 
-	public LinkPropertyUpdater(Link link, Mapping mapping) {
+	public LinkPropertyUpdater(Link link, Mapping mapping, Repository repository, String sourceId) {
 		this.link = link;
-		this.mapping = mapping;		
+		this.mapping = mapping;
+		this.repository = repository;
+		this.sourceId = sourceId;		
 	}
 	
 	@Override
@@ -179,5 +184,15 @@ public class LinkPropertyUpdater implements PropertyUpdater {
 	@Override
 	public boolean isMandatory(Property<?> property) {
 		return false;
+	}
+
+	@Override
+	public String getSourceId() {
+		return sourceId;
+	}
+
+	@Override
+	public Repository getRepository() {
+		return repository;
 	}
 }

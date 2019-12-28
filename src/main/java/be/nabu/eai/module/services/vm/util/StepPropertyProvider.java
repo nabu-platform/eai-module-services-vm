@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.Set;
 
 import be.nabu.eai.developer.MainController;
-import be.nabu.eai.developer.MainController.PropertyUpdater;
+import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
 import be.nabu.eai.developer.util.ElementTreeItem;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
@@ -27,13 +28,17 @@ import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.Validator;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-public class StepPropertyProvider implements PropertyUpdater {
+public class StepPropertyProvider implements PropertyUpdaterWithSource {
 	
 	private TreeCell<Step> cell;
 	private Step step;
+	private Repository repository;
+	private String sourceId;
 	
-	public StepPropertyProvider(TreeCell<Step> step) {
+	public StepPropertyProvider(TreeCell<Step> step, Repository repository, String sourceId) {
 		this.cell = step;
+		this.repository = repository;
+		this.sourceId = sourceId;
 		this.step = this.cell.getItem().itemProperty().get();
 	}
 
@@ -462,5 +467,15 @@ public class StepPropertyProvider implements PropertyUpdater {
 	@Override
 	public boolean isMandatory(Property<?> property) {
 		return false;
+	}
+
+	@Override
+	public String getSourceId() {
+		return sourceId;
+	}
+
+	@Override
+	public Repository getRepository() {
+		return repository;
 	}
 }
