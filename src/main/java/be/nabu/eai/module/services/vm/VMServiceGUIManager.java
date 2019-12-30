@@ -668,7 +668,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		// show the input & output
 		StructureGUIManager structureManager = new StructureGUIManager();
-		structureManager.setActualId(actualId);
+		structureManager.setActualId(getId(service));
 		VBox input = new VBox();
 		RootElementWithPush element = new RootElementWithPush(
 			(Structure) service.getPipeline().get(Pipeline.INPUT).getType(), 
@@ -920,13 +920,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 //						button.disableProperty().set(true);
 //					}
 					// for a stepgroup, reenable some or all buttons
-					if (step instanceof StepGroup) {
-						for (Class<? extends Step> supported : step instanceof LimitedStepGroup ? ((LimitedStepGroup) step).getAllowedSteps() : addButtons.keySet()) {
-							if (addButtons.containsKey(supported)) {
-								addButtons.get(supported).disableProperty().set(false);
-							}
-						}
-					}
+//					if (step instanceof StepGroup) {
+//						for (Class<? extends Step> supported : step instanceof LimitedStepGroup ? ((LimitedStepGroup) step).getAllowedSteps() : addButtons.keySet()) {
+//							if (addButtons.containsKey(supported)) {
+////								addButtons.get(supported).disableProperty().set(false);
+//							}
+//						}
+//					}
 					
 					// if the new selection is not a map, or not the same map, clear it
 					if (!(step instanceof Map) || !arg2.equals(arg1)) {
