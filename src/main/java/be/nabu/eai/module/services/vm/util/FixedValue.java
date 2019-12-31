@@ -13,6 +13,7 @@ import javafx.scene.layout.Pane;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
 import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
+import be.nabu.eai.developer.impl.CustomTooltip;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.util.EAIDeveloperUtils;
@@ -106,7 +107,8 @@ public class FixedValue {
 				controller.showProperties(new LinkPropertyUpdater(link, null, repository, sourceId));
 			}
 		});
-		Tooltip.install(image, new Tooltip(link.getFrom()));
+		new CustomTooltip(link.getFrom()).install(image);
+//		Tooltip.install(image, new Tooltip(link.getFrom()));
 	}
 	
 	public void remove() {

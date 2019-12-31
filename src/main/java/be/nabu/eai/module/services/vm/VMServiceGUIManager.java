@@ -774,7 +774,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getBoxInterface().setPadding(new Insets(10, 20, 10, 20));
 		serviceController.getChkValidateInput().setPadding(new Insets(14, 20, 10, 15));
 		serviceController.getChkValidateOutput().setPadding(new Insets(14, 20, 10, 15));
-		serviceController.getChkValidateOutput().setContentDisplay(ContentDisplay.LEFT);
+		serviceController.getChkValidateOutput().setContentDisplay(ContentDisplay.RIGHT);
 		
 //		serviceController.getChkValidateInput().setStyle("-fx-border")
 		
