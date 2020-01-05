@@ -1406,7 +1406,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	private Node createMoveButton(Tree<Step> serviceTree, Direction direction, BooleanBinding notLocked) {
 		Button button = new Button();
 		button.setTooltip(new Tooltip(direction.name()));
-		button.setGraphic(MainController.loadFixedSizeGraphic("move/" + direction.name().toLowerCase() + ".png"));
+		button.setGraphic(MainController.loadFixedSizeGraphic("move/" + direction.name().toLowerCase() + ".png", 12));
 		button.disableProperty().bind(notLocked);
 		button.addEventHandler(ActionEvent.ANY, new EventHandler<ActionEvent>() {
 			@Override

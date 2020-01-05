@@ -73,7 +73,7 @@ public class FixedValue {
 							|| (selected.getItem().itemProperty().get().getType() instanceof BeanType && ((BeanType<?>) selected.getItem().itemProperty().get().getType()).getBeanClass().equals(Object.class))) {
 						if (event.getClickCount() == 2) {
 							PropertyUpdater updater = new FixedValuePropertyUpdater(selected.getItem().itemProperty().get(), fixedValues, serviceTree, tree, repository, sourceId);
-							EAIDeveloperUtils.buildPopup(MainController.getInstance(), updater, "Update Fixed Value", null, true);
+							EAIDeveloperUtils.buildPopup(MainController.getInstance(), updater, "Update Fixed Value", null, true, controller.getStageFor(sourceId), true);
 						}
 					}
 				}

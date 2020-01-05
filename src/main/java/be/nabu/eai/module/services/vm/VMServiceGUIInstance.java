@@ -107,4 +107,9 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 	public Artifact getArtifact() {
 		return service;
 	}
+	
+	@Override
+	public boolean requiresPropertiesPane() {
+		return true;
+	}
 }
