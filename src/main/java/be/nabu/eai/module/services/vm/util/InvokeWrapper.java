@@ -123,6 +123,7 @@ public class InvokeWrapper {
 				}
 			}
 		});
+		
 		// the input & output should not be scrollable but should resize on demand
 		final Service service = invoke.getService(controller.getRepository().getServiceContext());
 		
@@ -131,6 +132,10 @@ public class InvokeWrapper {
 			public void changed(ObservableValue<? extends Boolean> arg0, Boolean arg1, Boolean arg2) {
 				if (arg2 != null && arg2) {
 					pane.toFront();
+					pane.setStyle("-fx-background-color: #eaeaea");
+				}
+				else {
+					pane.setStyle("-fx-background-color: #ffffff");
 				}
 			}
 		};
@@ -301,18 +306,22 @@ public class InvokeWrapper {
 			// the initial resize just won't work...
 			input.setPrefWidth(100);
 			output.setPrefWidth(100);
-			nameLabel.widthProperty().addListener(new ChangeListener<Number>() {
-				@Override
-				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
-					if (arg2.intValue() > 200) {
-						iface.setMinWidth(arg2.doubleValue());
-						if (iface.getPrefWidth() < arg2.doubleValue()) {
-							iface.setPrefWidth(arg2.doubleValue());
-						}
-						nameLabel.widthProperty().removeListener(this);
-					}
-				}
-			});
+//			nameLabel.widthProperty().addListener(new ChangeListener<Number>() {
+//				@Override
+//				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
+//					if (arg2.intValue() > 200) {
+//						iface.setMinWidth(arg2.doubleValue());
+//						if (iface.getPrefWidth() < arg2.doubleValue()) {
+//							iface.setPrefWidth(arg2.doubleValue());
+//						}
+//						nameLabel.widthProperty().removeListener(this);
+//					}
+//				}
+//			});
+			
+			name.minWidthProperty().bind(iface.widthProperty());
+			iface.minWidthProperty().bind(input.widthProperty().add(output.widthProperty()));
+			
 			// can not find a proper dynamic way of recalculating the holder without visual artifacts 			
 //			input.boundsInLocalProperty().addListener(new ChangeListener<Bounds>() {
 //				@Override
