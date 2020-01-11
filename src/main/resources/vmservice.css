@@ -93,8 +93,12 @@
 	-fx-stroke: #20B2AA;
 }
 
-.invokeServiceName, .invokeOrder {
-	-fx-padding: 2px 5px 2px 5px;
+.selectedInvoke {
+	-fx-background-color: #dbeeff;	
+}
+
+.invokeServiceName, .invokeOrder, .invokeServiceGoto {
+	-fx-padding: 4px 5px 4px 5px;
 }
 
 .invokeServiceName {

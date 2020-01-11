@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
+import be.nabu.eai.developer.api.Component;
+import be.nabu.eai.developer.api.Controller;
+import be.nabu.libs.validator.api.ValidationMessage;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -12,23 +15,18 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Control;
-import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import be.nabu.eai.developer.api.Component;
-import be.nabu.eai.developer.api.Controller;
-import be.nabu.libs.validator.api.ValidationMessage;
 
 /**
  * For scrollpanes: on the scrollpane you need to set "fit left" and "fit right" in the "layout" tab of the editor
@@ -46,7 +44,7 @@ public class VMServiceController implements Initializable, Controller {
 	private HBox hbxButtons, hbxButtons2, boxInterface;
 	
 	@FXML
-	private Tab tabMap, tabInterface;
+	private Tab tabMap, tabInterface, tabDescription;
 	
 	@FXML
 	private ScrollPane scrLeft, scrRight;
@@ -62,6 +60,9 @@ public class VMServiceController implements Initializable, Controller {
 	
 	@FXML
 	private CheckBox chkValidateInput, chkValidateOutput;
+	
+	@FXML
+	private TextArea txtDescription;
 	
 	private List<Node> content;
 	private Scene scene;
@@ -215,5 +216,21 @@ public class VMServiceController implements Initializable, Controller {
 
 	public HBox getBoxInterface() {
 		return boxInterface;
+	}
+
+	public TextArea getTxtDescription() {
+		return txtDescription;
+	}
+
+	public void setTxtDescription(TextArea txtDescription) {
+		this.txtDescription = txtDescription;
+	}
+
+	public Tab getTabDescription() {
+		return tabDescription;
+	}
+
+	public void setTabDescription(Tab tabDescription) {
+		this.tabDescription = tabDescription;
 	}
 }

@@ -481,6 +481,20 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 		
+		if (!service.isSupportsDescription()) {
+			serviceController.getTabDescription().setDisable(true);
+		}
+		else {
+			serviceController.getTxtDescription().setText(service.getDescription());
+			serviceController.getTxtDescription().textProperty().addListener(new ChangeListener<String>() {
+				@Override
+				public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+					service.setDescription(newValue);
+					MainController.getInstance().setChanged();
+				}
+			});
+		}
+		
 		serviceTree.rootProperty().set(new StepTreeItem(service.getRoot(), null, false, locked));
 		serviceTree.getRootCell().expandedProperty().set(true);
 		// disable map tab
@@ -1695,6 +1709,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		outputTree.addRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 		
 		leftTree.setClipboardHandler(new ElementClipboardHandler(leftTree, false));
+		leftTree.setReadOnly(true);
 		
 		// expand explicitly
 		leftTree.getRootCell().expandedProperty().set(true);

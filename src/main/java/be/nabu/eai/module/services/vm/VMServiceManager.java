@@ -1,6 +1,7 @@
 package be.nabu.eai.module.services.vm;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import be.nabu.libs.evaluator.QueryPart;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
+import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -78,7 +80,22 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		definition.setExecutorProvider(new RepositoryExecutorProvider(entry.getRepository()));
 		definition.setRoot(sequence);
 		definition.setId(entry.getId());
+		definition.setDescription(loadDescription(entry));
 		return definition;
+	}
+
+	public static String loadDescription(ResourceEntry entry) throws IOException, UnsupportedEncodingException {
+		Resource child = entry.getContainer().getChild("description.txt");
+		if (child instanceof ReadableResource) {
+			ResourceReadableContainer resourceReadableContainer = new ResourceReadableContainer((ReadableResource) child);
+			try {
+				return new String(IOUtils.toBytes(resourceReadableContainer), "UTF-8");
+			}
+			finally {
+				resourceReadableContainer.close();
+			}
+		}
+		return null;
 	}
 
 	public static Sequence parseSequence(ReadableContainer<ByteBuffer> readable) throws IOException, ParseException {
@@ -103,7 +120,35 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
+		
+		saveDescription(entry, artifact);
+		
 		return artifact.getRoot().validate(new SimpleServiceContext());		
+	}
+
+	public static void saveDescription(ResourceEntry entry, VMService artifact) throws IOException, UnsupportedEncodingException {
+		// only do something with the file if we support it, leave the file alone if we don't, someone else might be managing it
+		if (artifact.isSupportsDescription()) {
+			Resource child = entry.getContainer().getChild("description.txt");
+			// don't leave the file dangling if we have no description, this would just add a lot of empty files
+			if (artifact.getDescription() == null || artifact.getDescription().trim().isEmpty()) {
+				if (child != null) {
+					((ManageableContainer<?>) entry.getContainer()).delete("description.txt");
+				}
+			}
+			else {
+				if (child == null) {
+					child = ((ManageableContainer<?>) entry.getContainer()).create("description.txt", "text/plain");
+				}
+				ResourceWritableContainer resourceWritableContainer = new ResourceWritableContainer((WritableResource) child);
+				try {
+					resourceWritableContainer.write(IOUtils.wrap(artifact.getDescription().getBytes("UTF-8"), true));
+				}
+				finally {
+					resourceWritableContainer.close();
+				}
+			}
+		}
 	}
 
 	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence) throws IOException {

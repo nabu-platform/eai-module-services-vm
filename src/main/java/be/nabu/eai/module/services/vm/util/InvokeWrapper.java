@@ -10,7 +10,12 @@ import java.util.Set;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -18,16 +23,19 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.MainController.PropertyUpdater;
 import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
+import be.nabu.eai.developer.impl.CustomTooltip;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
 import be.nabu.eai.developer.managers.util.ElementMarshallable;
 import be.nabu.eai.developer.managers.util.EnumeratedSimpleProperty;
 import be.nabu.eai.developer.managers.util.SimpleProperty;
 import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.eai.developer.util.ElementClipboardHandler;
+import be.nabu.eai.developer.util.ElementSelectionListener;
 import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.repository.api.Entry;
@@ -83,12 +91,14 @@ public class InvokeWrapper {
 	}
 	
 	public Pane getComponent() {
+		VBox vbox = new VBox();
 		// use an anchorpane, because if you set the vbox to unmanaged, things go...wrong
 		final AnchorPane pane = new AnchorPane();
-		pane.addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+		EventHandler<KeyEvent> keyHandler = new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
-				if (event.getCode() == KeyCode.DELETE) {
+				// only allow delete if it is visually selected
+				if (event.getCode() == KeyCode.DELETE && vbox.getStyleClass().contains("selectedInvoke")) {
 					// the input is mapped inside the invoke itself so from the object perspective they don't have to be specifically removed
 					// however we do need to remove the lines that were drawn
 					for (Step child : invoke.getChildren()) {
@@ -122,24 +132,11 @@ public class InvokeWrapper {
 					event.consume();
 				}
 			}
-		});
+		};
+		pane.addEventHandler(KeyEvent.KEY_PRESSED, keyHandler);
 		
 		// the input & output should not be scrollable but should resize on demand
 		final Service service = invoke.getService(controller.getRepository().getServiceContext());
-		
-		ChangeListener<Boolean> toFrontListener = new ChangeListener<Boolean>() {
-			@Override
-			public void changed(ObservableValue<? extends Boolean> arg0, Boolean arg1, Boolean arg2) {
-				if (arg2 != null && arg2) {
-					pane.toFront();
-					pane.setStyle("-fx-background-color: #eaeaea");
-				}
-				else {
-					pane.setStyle("-fx-background-color: #ffffff");
-				}
-			}
-		};
-		pane.focusedProperty().addListener(toFrontListener);
 		
 		pane.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 			@Override
@@ -247,7 +244,7 @@ public class InvokeWrapper {
 				controller.showProperties(updater);
 			}
 		});
-		VBox vbox = new VBox();
+		
 		vbox.getStyleClass().add("invokeWrapper");
 		HBox name = new HBox();
 		name.getStyleClass().add("invokeName");
@@ -256,13 +253,53 @@ public class InvokeWrapper {
 		Label invokeLevelLabel = new Label("[" + invoke.getInvocationOrder() + "]");
 		invokeLevelLabel.getStyleClass().add("invokeOrder");
 		name.getChildren().addAll(invokeLevelLabel, nameLabel);
+		
+		// add more info about the service if available
+		if (service != null && service.getDescription() != null) {
+			Node loadGraphic = MainController.loadFixedSizeGraphic("info2.png", 10, 16);
+			CustomTooltip customTooltip = new CustomTooltip(service.getDescription());
+			customTooltip.install(loadGraphic);
+			customTooltip.setMaxWidth(400d);
+			nameLabel.setGraphic(loadGraphic);
+			// if it's on the right, it is next to the button making it harder to see
+//			nameLabel.setContentDisplay(ContentDisplay.RIGHT);
+		}
+		
+		Label goToLabel = new Label();
+		goToLabel.getStyleClass().add("invokeServiceGoto");
+		goToLabel.setGraphic(MainController.loadFixedSizeGraphic("right-chevron.png", 12));
+		goToLabel.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+			@Override
+			public void handle(MouseEvent event) {
+				MainController.getInstance().open(invoke.getServiceId());
+			}
+		});
+		new CustomTooltip("View Service").install(goToLabel);
+		HBox spacer = new HBox();
+		HBox.setHgrow(spacer, Priority.ALWAYS);
+		name.getChildren().addAll(spacer, goToLabel);
 		vbox.getChildren().add(name);
+		
+		ChangeListener<Boolean> toFrontListener = new ChangeListener<Boolean>() {
+			@Override
+			public void changed(ObservableValue<? extends Boolean> arg0, Boolean arg1, Boolean arg2) {
+				if (arg2 != null && arg2) {
+					pane.toFront();
+					vbox.getStyleClass().add("selectedInvoke");
+				}
+				else {
+					vbox.getStyleClass().remove("selectedInvoke");
+				}
+			}
+		};
+		pane.focusedProperty().addListener(toFrontListener);
 		
 		vbox.getStyleClass().add("service");
 		if (service != null) {
 			input = new Tree<Element<?>>(new ElementMarshallable());
 			EAIDeveloperUtils.addElementExpansionHandler(input);
 			input.setClipboardHandler(new ElementClipboardHandler(input, false));
+			input.setReadOnly(true);
 			input.set("invoke", invoke);
 			input.rootProperty().set(new ElementTreeItem(new RootElement(service.getServiceInterface().getInputDefinition(), "input"), null, false, false));
 			input.getTreeCell(input.rootProperty().get()).expandedProperty().set(false);
@@ -272,8 +309,14 @@ public class InvokeWrapper {
 			output = new Tree<Element<?>>(new ElementMarshallable());
 			EAIDeveloperUtils.addElementExpansionHandler(output);
 			output.setClipboardHandler(new ElementClipboardHandler(output, false));
+			output.setReadOnly(true);
 			
 			updateOutput(service);
+
+			ElementSelectionListener elementSelectionListener = new ElementSelectionListener(controller, false);
+			elementSelectionListener.setActualId(sourceId);
+			input.getSelectionModel().selectedItemProperty().addListener(elementSelectionListener);
+			output.getSelectionModel().selectedItemProperty().addListener(elementSelectionListener);
 //			if (executorProvider.isBatch(invoke.getTarget())) {
 //				output.rootProperty().set(new ElementTreeItem(new RootElement(ExecutorProvider.getBatchOutput(service), "output"), null, false, false));
 //			}

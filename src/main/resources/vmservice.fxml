@@ -97,6 +97,16 @@
                               </AnchorPane>
                            </content>
                         </Tab>
+                        <Tab fx:id="tabDescription" text="Description">
+                        	<content>
+                              <AnchorPane fx:id="panDescription">
+                                 <children>
+                                 	<TextArea fx:id="txtDescription" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                 	</TextArea>
+                                 </children>
+                              </AnchorPane>
+                           </content>
+                        </Tab>
                  </tabs>
                </TabPane>
             </children>
