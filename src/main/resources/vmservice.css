@@ -24,11 +24,11 @@
 }
 
 .vm-label {
-	-fx-text-fill: #555555;
+	-fx-text-fill: #6D6D0A;
 	-fx-background-color: #ffffe3;
 	-fx-padding: 1px 5px 1px 5px;
 	-fx-border-width: 1px;
-	-fx-border-color: #cccccc;
+	-fx-border-color: #D9D933;
 	-fx-border-radius: 5px;
 	-fx-background-radius: 5px;
 }
@@ -41,9 +41,9 @@
 .vm-throw-message {
 	-fx-font-weight: normal;
 /*	-fx-text-fill: #ffffff; c50006 */
-	-fx-text-fill: #333333;
+	-fx-text-fill: #690303;
 	-fx-background-color: #ffebeb;
-	-fx-border-color: #cccccc;
+	-fx-border-color: #E99494;
 /*	-fx-background-insets: 0px 0px 0px 10px;
 	-fx-border-insets: 0px 0px 0px 10px;*/
 	-fx-border-width: 1px;
@@ -52,7 +52,7 @@
 }
 
 .vm-comment {
-	-fx-text-fill: #333333;
+	-fx-text-fill: #444444;
 	/*-fx-background-color: #F2F2F2;*/
 	-fx-background-color: #F5F5F5;
 	
@@ -121,29 +121,48 @@
 	-fx-background-color: #dbeeff;
 	-fx-border-radius: 5px;
 	-fx-background-radius: 5px;
+	
+	-fx-border-color: #7295b4;
 }
+
 .highlightedStep .vm-comment {
 	-fx-background-color: #dbeeff;
 	-fx-border-width: 0px;
+	-fx-text-fill: #285073;
 }
 .highlightedStep .vm-label {
 	-fx-background-color: #dbeeff;
 	-fx-border-width: 0px;
+	-fx-text-fill: #285073;
 }
 .highlightedStep .vm-throw-message {
 	-fx-background-color: #dbeeff;
 	-fx-border-width: 0px;
+	-fx-text-fill: #285073;
+}
+
+.selected {
+	-fx-background-color: #1f72f4;
+	-fx-text-fill: white;
+	/* -fx-border-color: #01093d; */
+}
+.selected * {
+	-fx-text-fill: white;
+	-fx-background-color: #1f72f4;
 }
 
 .selected .vm-comment {
-	-fx-background-color: #cccccc;
-	-fx-text-fill: #333333;
+	-fx-background-color: #1f72f4;
+	-fx-text-fill: white;
+	-fx-border-color: #1f72f4;
 }
 .selected .vm-label {
-	-fx-background-color: #cccccc;
-	-fx-text-fill: #333333;
+	-fx-background-color: #1f72f4;
+	-fx-text-fill: white;
+	-fx-border-color: #1f72f4;
 }
 .selected .vm-throw-message {
-	-fx-background-color: #cccccc;
-	-fx-text-fill: #333333;
+	-fx-background-color: #1f72f4;
+	-fx-text-fill: white;
+	-fx-border-color: #1f72f4;
 }
