@@ -20,6 +20,7 @@ import be.nabu.eai.developer.util.ElementClipboardHandler;
 import be.nabu.eai.developer.util.ElementSelectionListener;
 import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
+import be.nabu.eai.module.types.structure.StructureGUIManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.Tree;
@@ -292,7 +293,7 @@ public class InvokeWrapper {
 		
 		vbox.getStyleClass().add("service");
 		if (service != null) {
-			input = new Tree<Element<?>>(new ElementMarshallable());
+			input = new Tree<Element<?>>(new ElementMarshallable(), null, StructureGUIManager.newCellDescriptor());
 			EAIDeveloperUtils.addElementExpansionHandler(input);
 			input.setClipboardHandler(new ElementClipboardHandler(input, false));
 			input.setReadOnly(true);
@@ -302,7 +303,7 @@ public class InvokeWrapper {
 			TreeDragDrop.makeDroppable(input, new DropLinkListener(controller, mappings, this.service, serviceController, serviceTree, lock, repository, sourceId));
 			input.getRootCell().getNode().getStyleClass().add("invokeTree");
 			
-			output = new Tree<Element<?>>(new ElementMarshallable());
+			output = new Tree<Element<?>>(new ElementMarshallable(), null, StructureGUIManager.newCellDescriptor());
 			EAIDeveloperUtils.addElementExpansionHandler(output);
 			output.setClipboardHandler(new ElementClipboardHandler(output, false));
 			output.setReadOnly(true);

@@ -287,7 +287,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 	public static class LabelProperty extends BaseProperty<String> {
 		@Override
 		public String getName() {
-			return "label";
+			return "condition";
 		}
 		@Override
 		public Validator<String> getValidator() {

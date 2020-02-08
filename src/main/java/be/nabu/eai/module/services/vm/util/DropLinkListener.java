@@ -6,6 +6,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import be.nabu.eai.developer.MainController;
+import be.nabu.eai.module.services.vm.VMServiceGUIManager;
 import be.nabu.eai.module.services.vm.util.Mapping.RemoveMapping;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.Tree;
@@ -81,7 +82,7 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 
 	@SuppressWarnings("unchecked")
 	public static void drawMapping(VMServiceController serviceController, Tree<Step> serviceTree, java.util.Map<Link, Mapping> mappings, TreeCell<Element<?>> target, TreeCell<?> dragged, boolean mask, ReadOnlyBooleanProperty lock, Repository repository, String sourceId) {
-		Mapping mapping = new Mapping(serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
+//		Mapping mapping = new Mapping(serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
 		ParsedPath from = new ParsedPath(TreeDragDrop.getPath(dragged.getItem()));
 		Invoke sourceInvoke = null;
 		// you are dragging something from an invoke output
@@ -135,6 +136,8 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 		}
 		setDefaultIndexes(to, target.getTree().rootProperty().get(), !fromIsList);
 		final Link link = new Link(from.toString(), to.toString());
+		// by reusing that bit of code, we finally get F8 support from the getgo instead of after refreshing the map step
+		Mapping mapping = VMServiceGUIManager.buildMapping(link, serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
 		link.setMask(mask);
 		if (link.isMask()) {
 			mapping.addStyleClass("maskLine");

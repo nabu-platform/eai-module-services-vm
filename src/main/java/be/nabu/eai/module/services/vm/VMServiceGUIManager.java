@@ -27,6 +27,7 @@ import be.nabu.eai.developer.api.ValidationSelectableArtifactGUIManager;
 import be.nabu.eai.developer.components.RepositoryBrowser;
 import be.nabu.eai.developer.events.ArtifactMoveEvent;
 import be.nabu.eai.developer.events.VariableRenameEvent;
+import be.nabu.eai.developer.impl.CustomTooltip;
 import be.nabu.eai.developer.managers.ServiceGUIManager;
 import be.nabu.eai.developer.managers.util.DoubleAmountListener;
 import be.nabu.eai.developer.managers.util.ElementLineConnectListener;
@@ -1578,6 +1579,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					link(service, serviceController, lastSelectedInputElement.get(), lastSelectedOutputElement.get(), arg0.getButton() == MouseButton.SECONDARY, controller.hasLock(actualId), false, controller.getRepository(), actualId);
 				}
 			});
+			CustomTooltip customTooltip = new CustomTooltip("Link the source field to the target field (CTRL+D).\nPerform a masked mapping by right clicking this button (CTRL+SHIFT+D).\nForce a recursive mapping by using ALT+D.");
+			customTooltip.install(linkButton);
+			customTooltip.setMaxWidth(400d);
 			
 			Tree<Element<?>> rightTree = structureManager.display(controller, right, new RootElementWithPush(
 				(Structure) step.getPipeline(new SimpleExecutionContext.SimpleServiceContext()), 

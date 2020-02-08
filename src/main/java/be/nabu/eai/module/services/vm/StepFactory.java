@@ -7,9 +7,13 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.util.Callback;
@@ -46,8 +50,12 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 		private HBox validationsBox = new HBox();
 		private List<Validation<?>> localMessages = new ArrayList<Validation<?>>();
 		private ListChangeListener<Validation<?>> listChangeListener;
+		private TextField textField = new TextField();
+		private Step step;
+		private boolean editingComment, editingLabel;
 		
 		public StepCell(TreeItem<Step> treeItem, ObservableList<Validation<?>> validations) {
+			this.step = treeItem.itemProperty().get();
 			refresh(treeItem.itemProperty().get());
 			listChangeListener = new ListChangeListener<Validation<?>>() {
 				@Override
@@ -85,6 +93,60 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 			if (!localMessages.isEmpty()) {
 				drawValidations(treeItem.itemProperty().get());
 			}
+			box.addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+				@Override
+				public void handle(KeyEvent event) {
+					if (event.getCode() == KeyCode.F2 && !event.isMetaDown()) {
+						editingComment = true;
+						editingLabel = false;
+						edit();
+						event.consume();
+					}
+					else if (event.getCode() == KeyCode.F3 && !event.isMetaDown()) {
+						editingComment = false;
+						editingLabel = true;
+						edit();
+						event.consume();
+					}
+				}
+			});
+			textField.addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+				@Override
+				public void handle(KeyEvent event) {
+					if (event.getCode() == KeyCode.ENTER) {
+						MainController.getInstance().setChanged();
+						String value = textField.getText() == null || textField.getText().trim().isEmpty() ? null : textField.getText();
+						if (editingComment) {
+							step.setComment(value);
+						}
+						else {
+							step.setLabel(value);
+						}
+						editingComment = false;
+						editingLabel = false;
+						refresh(step);
+						box.requestFocus();
+						event.consume();
+					}
+					else if (event.getCode() == KeyCode.ESCAPE) {
+						editingComment = false;
+						editingLabel = false;
+						refresh(step);
+						box.requestFocus();
+						event.consume();
+					}
+				}
+			});
+			textField.getStyleClass().add("editableTextfield");
+			textField.setPromptText("Add a description");
+		}
+		
+		private void edit() {
+			textField.setText(editingComment ? step.getComment() : step.getLabel());
+			box.getChildren().clear();
+			box.getChildren().add(textField);
+			textField.requestFocus();
+			textField.selectAll();
 		}
 		
 		@Override
