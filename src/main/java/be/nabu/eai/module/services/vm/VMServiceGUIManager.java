@@ -533,6 +533,27 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						selectedItem.expandAll();
 					}
 				}
+				else if (event.getCode() == KeyCode.ENTER && event.isControlDown()) {
+					TreeCell<Step> selectedItem = serviceTree.getSelectionModel().getSelectedItem();
+					if (selectedItem != null) {
+						TreeCell<Step> parent = selectedItem.getParent();
+						if (parent != null) {
+							Step step = parent.getItem().itemProperty().get();
+							if (step instanceof StepGroup) {
+								try {
+									Step instance = selectedItem.getItem().itemProperty().get().getClass().newInstance();
+									instance.setParent((StepGroup) step);
+									((StepGroup) step).getChildren().add(instance);
+									parent.getItem().refresh();
+									MainController.getInstance().setChanged();
+								}
+								catch (Exception e) {
+									logger.error("Could not add element", e);
+								}
+							}
+						}
+					}
+				}
 			}
 		});
 
