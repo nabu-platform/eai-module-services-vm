@@ -22,6 +22,7 @@ import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeCellValue;
 import be.nabu.jfx.control.tree.TreeItem;
 import be.nabu.libs.services.vm.api.Step;
+import be.nabu.libs.services.vm.step.Catch;
 import be.nabu.libs.services.vm.step.For;
 import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Map;
@@ -286,6 +287,27 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					
 					if (((Throw) step).getCode() == null && step.getLabel() != null) {
 						message.getStyleClass().add("vm-margin-left");
+					}
+				}
+			}
+			else if (step instanceof Catch) {
+				if (((Catch) step).getCodes() != null) {
+					String result = null;
+					for (String single : ((Catch) step).getCodes()) {
+						if (single != null) {
+							if (result == null) {
+								result = "";
+							}
+							else {
+								result += ", ";
+							}
+							result += single;
+						}
+					}
+					if (result != null) {
+						Label code = new Label("[" + result + "]");
+						code.getStyleClass().addAll("vm-value", "vm-throw-code");
+						box.getChildren().addAll(code);
 					}
 				}
 			}

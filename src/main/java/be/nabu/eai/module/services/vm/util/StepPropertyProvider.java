@@ -1,6 +1,7 @@
 package be.nabu.eai.module.services.vm.util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,6 +59,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new VariableProperty());
 			properties.add(new ExceptionProperty());
 			properties.add(new SuppressExceptionProperty());
+			properties.add(new CodeProperty());
 		}
 		else if (step instanceof For) {
 			properties.add(new QueryProperty());
@@ -100,6 +102,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			values.add(new ValueImpl<String>(new ExceptionProperty(), types));
 			values.add(new ValueImpl<Boolean>(new SuppressExceptionProperty(), ((Catch) step).getSuppressException()));
+			String codes = null;
+			if (((Catch) step).getCodes() != null) {
+				for (String code : ((Catch) step).getCodes()) {
+					if (code != null) { 
+						if (codes == null) {
+							codes = "";
+						}
+						else {
+							codes += ", ";
+						}
+						codes += code;
+					}
+				}
+			}
+			values.add(new ValueImpl<String>(new CodeProperty(), codes));
 		}
 		else if (step instanceof For) {
 			values.add(new ValueImpl<String>(new QueryProperty(), ((For) step).getQuery()));
@@ -175,6 +192,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			else if (property instanceof SuppressExceptionProperty) {
 				((Catch) step).setSuppressException((Boolean) value);
+			}
+			else if (property instanceof CodeProperty) {
+				((Catch) step).setCodes(value == null || value.toString().trim().isEmpty() ? null : new ArrayList<String>(Arrays.asList(value.toString().split("[\\s]*,[\\s]*"))));
 			}
 		}
 		else if (step instanceof For) {
