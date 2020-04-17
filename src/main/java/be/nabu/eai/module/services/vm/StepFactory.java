@@ -209,10 +209,22 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				labelText = "$default";
 			}
 			
+			boolean preamble = false;
+			
+			if (step.getFeatures() != null) {
+				Label label = new Label(step.getFeatures());
+				label.getStyleClass().add("vm-feature");
+				box.getChildren().addAll(label);
+				preamble = true;
+			}
+			
 			if (labelText != null) {
 				Label label = new Label(labelText);
 				label.getStyleClass().add("vm-label");
 				box.getChildren().addAll(label);
+				if (step.getFeatures() != null) {
+					label.getStyleClass().add("vm-margin-left");
+				}
 			}
 			
 			String comment = step.getComment();
@@ -247,7 +259,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					hasVariable = true;
 					Label each = new Label("each");
 					each.getStyleClass().add("vm-description");
-					if (step.getLabel() != null) {
+					if (step.getLabel() != null || step.getFeatures() != null) {
 						each.getStyleClass().add("vm-margin-left");
 					}
 					Label item = new Label(((For) step).getVariable());
@@ -285,7 +297,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					message.getStyleClass().addAll("vm-value", "vm-throw-message");
 					box.getChildren().addAll(message);
 					
-					if (((Throw) step).getCode() == null && step.getLabel() != null) {
+					if (((Throw) step).getCode() == null && (step.getLabel() != null || step.getFeatures() != null)) {
 						message.getStyleClass().add("vm-margin-left");
 					}
 				}
@@ -315,7 +327,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 			if (comment != null) {
 				Label label = new Label(comment);
 				label.getStyleClass().add("vm-comment");
-				if (labelText != null) {
+				if (labelText != null || step.getFeatures() != null) {
 					label.getStyleClass().add("vm-margin-left");
 				}
 				box.getChildren().addAll(label);

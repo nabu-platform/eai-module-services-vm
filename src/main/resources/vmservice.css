@@ -33,6 +33,16 @@
 	-fx-background-radius: 5px;
 }
 
+.vm-feature {
+	-fx-text-fill: #6b046c;
+	-fx-background-color: #fee8ff;
+	-fx-padding: 1px 5px 1px 5px;
+	-fx-border-width: 1px;
+	-fx-border-color: #c963cb;
+	-fx-border-radius: 5px;
+	-fx-background-radius: 5px;
+}
+
 .vm-margin-left {
 	-fx-background-insets: 0px 0px 0px 5px;
 	-fx-border-insets: 0px 0px 0px 5px;

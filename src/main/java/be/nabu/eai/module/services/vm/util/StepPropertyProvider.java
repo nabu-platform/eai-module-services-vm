@@ -11,6 +11,7 @@ import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
 import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.TreeCell;
+import be.nabu.libs.property.api.ComparableProperty;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.vm.step.Break;
@@ -24,6 +25,7 @@ import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.properties.BaseProperty;
 import be.nabu.libs.types.properties.CommentProperty;
+import be.nabu.libs.types.properties.SimpleProperty;
 import be.nabu.libs.validator.RangeValidator;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.Validator;
@@ -46,10 +48,11 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 	@Override
 	public Set<Property<?>> getSupportedProperties() {
 		Set<Property<?>> properties = new LinkedHashSet<Property<?>>();
-		properties.add(new CommentProperty());
+		properties.add(CommentProperty.getInstance());
 		// can't set a label if there is no parent as there is no one to execute it, note that basestep validation will throw a validation error if you set it (no parent pipeline to retrieve)
 		if (step.getParent() != null) {
 			properties.add(new LabelProperty());
+			properties.add(new FeatureProperty());
 		}
 		properties.add(new StepNameProperty());
 		if (step instanceof Break) {
@@ -86,6 +89,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 	public Value<?>[] getValues() {
 		List<Value<?>> values = new ArrayList<Value<?>>();
 		values.add(new ValueImpl<String>(new CommentProperty(), step.getComment()));
+		values.add(new ValueImpl<String>(new FeatureProperty(), step.getFeatures()));
 		values.add(new ValueImpl<String>(new LabelProperty(), step.getLabel()));
 		values.add(new ValueImpl<String>(new StepNameProperty(), step.getName()));
 		if (step instanceof Break) {
@@ -153,6 +157,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
 		if (property instanceof CommentProperty) {
 			step.setComment((String) value);
+		}
+		else if (property instanceof FeatureProperty) {
+			step.setFeatures((String) value);
 		}
 		else if (property instanceof LabelProperty) {
 			step.setLabel((String) value);
@@ -473,6 +480,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public String getName() {
 			return "realm";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class FeatureProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "feature";
 		}
 		@Override
 		public Validator<String> getValidator() {
