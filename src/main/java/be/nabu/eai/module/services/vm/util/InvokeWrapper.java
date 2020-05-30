@@ -142,9 +142,11 @@ public class InvokeWrapper {
 				SimpleProperty<Integer> invocationProperty = new SimpleProperty<Integer>("invocationOrder", Integer.class, true);
 				EnumeratedSimpleProperty<String> targetProperty = new EnumeratedSimpleProperty<String>("target", String.class, false);
 				SimpleProperty<Boolean> asynchronousProperty = new SimpleProperty<Boolean>("asynchronous", Boolean.class, false);
+				SimpleProperty<Boolean> recacheProperty = new SimpleProperty<Boolean>("recache", Boolean.class, false);
+				recacheProperty.setTitle("If this service is cached and you set boolean to true, upon invocation any existing cache is ignored, the service is explicitly executed and the result is cached. This effectively refreshes this particular instance of the cache");
 				targetProperty.addAll(InvokeWrapper.this.service.getExecutorProvider().getTargets().toArray(new String[0]));
 //				targetProperty.addAll("$self", "$any", "$all", "$other");
-				HashSet<Property<?>> hashSet = new HashSet<Property<?>>(Arrays.asList(invocationProperty, targetProperty, asynchronousProperty));
+				HashSet<Property<?>> hashSet = new HashSet<Property<?>>(Arrays.asList(invocationProperty, targetProperty, recacheProperty, asynchronousProperty));
 				
 				List<Property<?>> targetProperties = new ArrayList<Property<?>>();
 				if (invoke.getTarget() != null && executorProvider != null) {
@@ -162,6 +164,7 @@ public class InvokeWrapper {
 					public Value<?>[] getValues() {
 						List<Value<?>> list = new ArrayList<Value<?>>(Arrays.asList(new Value<?> [] { 
 							new ValueImpl<Integer>(invocationProperty, invoke.getInvocationOrder()),
+							new ValueImpl<Boolean>(recacheProperty, invoke.isRecache()),
 							new ValueImpl<String>(targetProperty, invoke.getTarget()),
 							new ValueImpl<Boolean>(asynchronousProperty, invoke.isAsynchronous() || (invoke.getTarget() != null && executorProvider != null && executorProvider.isAsynchronous(invoke.getTarget())))
 						}));
@@ -191,6 +194,9 @@ public class InvokeWrapper {
 					public List<ValidationMessage> updateProperty(Property<?> property, Object value) {
 						if (value instanceof Integer && property.equals(invocationProperty)) {
 							invoke.setInvocationOrder((Integer) value);
+						}
+						else if (property.equals(recacheProperty)) {
+							invoke.setRecache(value instanceof Boolean && (Boolean) value);
 						}
 						else if (property.equals(asynchronousProperty)) {
 							invoke.setAsynchronous(value instanceof Boolean && (Boolean) value);

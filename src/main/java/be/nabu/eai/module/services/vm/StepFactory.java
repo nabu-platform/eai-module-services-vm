@@ -8,6 +8,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -25,6 +26,7 @@ import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.step.Catch;
 import be.nabu.libs.services.vm.step.For;
 import be.nabu.libs.services.vm.step.Invoke;
+import be.nabu.libs.services.vm.step.Link;
 import be.nabu.libs.services.vm.step.Map;
 import be.nabu.libs.services.vm.step.Switch;
 import be.nabu.libs.services.vm.step.Throw;
@@ -209,6 +211,8 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				labelText = "$default";
 			}
 			
+			box.setAlignment(Pos.CENTER_LEFT);
+			
 			boolean preamble = false;
 			
 			if (step.getFeatures() != null) {
@@ -323,6 +327,22 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					}
 				}
 			}
+			else if (step instanceof Link) {
+				Label from = new Label(stripFrom(((Link) step).getFrom()));
+				from.getStyleClass().addAll("vm-value", "vm-link-from");
+				if (((Link) step).isFixedValue()) {
+					from.getStyleClass().add("vm-fixed-value");
+				}
+				
+				Label pointer = new Label("->");
+				pointer.getStyleClass().add("vm-margin-left");
+				
+				Label to = new Label(((Link) step).getTo());
+				to.getStyleClass().addAll("vm-value", "vm-link-to");
+				to.getStyleClass().add("vm-margin-left");
+				
+				box.getChildren().addAll(from, pointer, to);
+			}
 			
 			if (comment != null) {
 				Label label = new Label(comment);
@@ -332,6 +352,13 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				}
 				box.getChildren().addAll(label);
 			}
+		}
+		
+		private static String stripFrom(String from) {
+			if (from.matches("^result[\\w]{32}/.*")) {
+				return from.substring(39);
+			}
+			return from;
 		}
 		
 	}

@@ -22,6 +22,21 @@
 .vm-description {
 	-fx-padding: 1px 0px 1px 0px;
 }
+.vm-link-from, .vm-link-to {
+	-fx-text-fill: #31691c;
+	-fx-background-color: #F7FFF4;
+	-fx-padding: 1px 5px 1px 5px;
+	-fx-border-width: 1px;
+	-fx-border-color: #31691c;
+	-fx-border-radius: 5px;
+	-fx-background-radius: 5px;
+	-fx-font-weight: normal;
+}
+.vm-link-from.vm-fixed-value {
+	-fx-text-fill: #3b638c;
+	-fx-background-color: #ebf5ff;
+	-fx-border-color: #3b638c;
+}
 
 .vm-label {
 	-fx-text-fill: #6D6D0A;
