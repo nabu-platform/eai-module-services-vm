@@ -55,6 +55,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new FeatureProperty());
 		}
 		properties.add(new StepNameProperty());
+		properties.add(new DescriptionProperty());
 		if (step instanceof Break) {
 			properties.add(new BreakCountProperty());
 		}
@@ -75,7 +76,6 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		else if (step instanceof Throw) {
 			properties.add(new CodeProperty());
 			properties.add(new MessageProperty());
-			properties.add(new DescriptionProperty());
 			properties.add(new AliasProperty());
 			properties.add(new RealmProperty());
 		}
@@ -92,6 +92,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		values.add(new ValueImpl<String>(new FeatureProperty(), step.getFeatures()));
 		values.add(new ValueImpl<String>(new LabelProperty(), step.getLabel()));
 		values.add(new ValueImpl<String>(new StepNameProperty(), step.getName()));
+		values.add(new ValueImpl<String>(new DescriptionProperty(), step.getDescription()));
 		if (step instanceof Break) {
 			values.add(new ValueImpl<Integer>(new BreakCountProperty(), ((Break) step).getCount()));
 		}
@@ -133,7 +134,6 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		else if (step instanceof Throw) {
 			values.add(new ValueImpl<String>(new CodeProperty(), ((Throw) step).getCode()));
 			values.add(new ValueImpl<String>(new MessageProperty(), ((Throw) step).getMessage()));
-			values.add(new ValueImpl<String>(new DescriptionProperty(), ((Throw) step).getDescription()));
 			values.add(new ValueImpl<String>(new AliasProperty(), ((Throw) step).getAlias()));
 			values.add(new ValueImpl<String>(new RealmProperty(), ((Throw) step).getRealm()));
 		}
@@ -157,6 +157,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
 		if (property instanceof CommentProperty) {
 			step.setComment((String) value);
+		}
+		else if (property instanceof DescriptionProperty) {
+			step.setDescription((String) value);
 		}
 		else if (property instanceof FeatureProperty) {
 			step.setFeatures((String) value);
@@ -242,9 +245,6 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			else if (property instanceof CodeProperty) {
 				((Throw) step).setCode((String) value);
-			}
-			else if (property instanceof DescriptionProperty) {
-				((Throw) step).setDescription((String) value);
 			}
 			else if (property instanceof AliasProperty) {
 				((Throw) step).setAlias((String) value);

@@ -104,6 +104,7 @@ import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.ModifiableComplexType;
 import be.nabu.libs.types.base.ElementImpl;
 import be.nabu.libs.types.base.ValueImpl;
+import be.nabu.libs.types.properties.RestrictProperty;
 import be.nabu.libs.types.properties.ValidateProperty;
 import be.nabu.libs.types.structure.Structure;
 import be.nabu.libs.validator.api.Validation;
