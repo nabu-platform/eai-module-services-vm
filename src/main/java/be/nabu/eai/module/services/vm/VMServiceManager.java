@@ -426,6 +426,38 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 						((For) step).setQuery(rewritten);
 					}
 				}
+				
+				String originalBatch = ((For) step).getBatchSize();
+				if (originalBatch != null) {
+					ParsedPath parsed = new ParsedPath(originalBatch);
+					rewrite(parsed, oldPath, newPath);
+					String rewritten = parsed.toString();
+					// we shouldn't turn absolute references into relative ones!
+					if (originalBatch.startsWith("/") && !rewritten.startsWith("/")) {
+						rewritten = "/" + rewritten;
+					}
+					if (!rewritten.equals(originalBatch)) {
+						updated = true;
+						System.out.println("Updating for 'batchSize' from '" + originalBatch + "' to '" + rewritten + "'");
+						((For) step).setBatchSize(rewritten);
+					}
+				}
+				
+				String originalInto = ((For) step).getInto();
+				if (originalInto != null) {
+					ParsedPath parsed = new ParsedPath(originalInto);
+					rewrite(parsed, oldPath, newPath);
+					String rewritten = parsed.toString();
+					// we shouldn't turn absolute references into relative ones!
+					if (originalInto.startsWith("/") && !rewritten.startsWith("/")) {
+						rewritten = "/" + rewritten;
+					}
+					if (!rewritten.equals(originalInto)) {
+						updated = true;
+						System.out.println("Updating for 'into' from '" + originalInto + "' to '" + rewritten + "'");
+						((For) step).setInto(rewritten);
+					}
+				}
 			}
 			else if (step instanceof Throw) {
 				String original = ((Throw) step).getMessage();

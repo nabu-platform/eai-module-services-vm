@@ -69,6 +69,8 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new QueryProperty());
 			properties.add(new VariableProperty());
 			properties.add(new IndexProperty());
+			properties.add(new BatchSizeProperty());
+			properties.add(new IntoProperty());
 		}
 		else if (step instanceof Switch) {
 			properties.add(new QueryProperty());
@@ -81,6 +83,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
+			properties.add(new SuppressExceptionProperty());
 		}
 		return properties;
 	}
@@ -127,6 +130,8 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			values.add(new ValueImpl<String>(new QueryProperty(), ((For) step).getQuery()));
 			values.add(new ValueImpl<String>(new VariableProperty(), ((For) step).getVariable()));
 			values.add(new ValueImpl<String>(new IndexProperty(), ((For) step).getIndex()));
+			values.add(new ValueImpl<String>(new BatchSizeProperty(), ((For) step).getBatchSize()));
+			values.add(new ValueImpl<String>(new IntoProperty(), ((For) step).getInto()));
 		}
 		else if (step instanceof Switch) {
 			values.add(new ValueImpl<String>(new QueryProperty(), ((Switch) step).getQuery()));
@@ -139,6 +144,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
+			values.add(new ValueImpl<Boolean>(new SuppressExceptionProperty(), ((Sequence) step).getSuppressException()));
 		}
 		return values.toArray(new Value[0]);
 	}
@@ -235,6 +241,12 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
 				}
 			}
+			else if (property instanceof BatchSizeProperty) {
+				((For) step).setBatchSize((String) value);
+			}
+			else if (property instanceof IntoProperty) {
+				((For) step).setInto((String) value);
+			}
 		}
 		else if (step instanceof Switch) {
 			((Switch) step).setQuery((String) value);
@@ -265,6 +277,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 				else {
 					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
 				}
+			}
+			else if (property instanceof SuppressExceptionProperty) {
+				((Sequence) step).setSuppressException((Boolean) value);
 			}
 		}
 		cell.refresh();
@@ -495,6 +510,36 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public String getName() {
 			return "feature";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class BatchSizeProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "batchSize";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class IntoProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "into";
 		}
 		@Override
 		public Validator<String> getValidator() {

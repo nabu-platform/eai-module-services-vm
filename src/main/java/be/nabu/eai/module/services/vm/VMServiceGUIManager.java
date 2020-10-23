@@ -544,7 +544,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								try {
 									Step instance = selectedItem.getItem().itemProperty().get().getClass().newInstance();
 									instance.setParent((StepGroup) step);
-									((StepGroup) step).getChildren().add(instance);
+									int indexOf = ((StepGroup) step).getChildren().indexOf(selectedItem.getItem().itemProperty().get());
+									if (indexOf < 0 || indexOf >= ((StepGroup) step).getChildren().size() - 1) {
+										((StepGroup) step).getChildren().add(instance);
+									}
+									else {
+										((StepGroup) step).getChildren().add(indexOf + 1, instance);
+									}
 									parent.getItem().refresh();
 									MainController.getInstance().setChanged();
 								}
@@ -713,8 +719,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			false,
 			service.getPipeline().get(Pipeline.INPUT).getProperties()
 		);
+		// any properties you push on the root element, should be pushed to the wrapper element of the input in the pipeline
+		// otherwise the properties will end up only on the type, not the element and not get persisted
+		element.setPushTarget(service.getPipeline().get(Pipeline.INPUT));
+		
 		// block all properties for the input field
 		element.getBlockedProperties().addAll(element.getSupportedProperties());
+		// allow restrictions!
+		element.getBlockedProperties().remove(RestrictProperty.getInstance());
 		
 		inputTree = structureManager.display(controller, input, element, isInterfaceEditable(), false);
 		inputTree.setClipboardHandler(new ElementClipboardHandler(inputTree));
@@ -731,8 +743,11 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			false,
 			service.getPipeline().get(Pipeline.OUTPUT).getProperties()
 		);
+		element.setPushTarget(service.getPipeline().get(Pipeline.OUTPUT));
 		// block all properties for the output field
 		element.getBlockedProperties().addAll(element.getSupportedProperties());
+		// allow restrictions!
+		element.getBlockedProperties().remove(RestrictProperty.getInstance());
 		
 		outputTree = structureManager.display(controller, output, element, isInterfaceEditable(), false);
 		outputTree.setClipboardHandler(new ElementClipboardHandler(outputTree));
