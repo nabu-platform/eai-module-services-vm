@@ -119,7 +119,9 @@
 }
 
 .selectedInvoke {
-	-fx-background-color: #dbeeff;	
+	-fx-background-color: #dbeeff !important;
+	-fx-text-fill: #436d93 !important;
+	-fx-border-color: #436d93 !important;
 }
 
 .invokeServiceName, .invokeOrder, .invokeServiceGoto {
