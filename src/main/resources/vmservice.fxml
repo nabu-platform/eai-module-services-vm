@@ -13,7 +13,7 @@
             <children>
                <VBox layoutX="39.0" layoutY="-32.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="230.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                   <children>
-                     <HBox fx:id="hbxButtons" maxHeight="35.0" minHeight="35.0" prefHeight="35.0" prefWidth="200.0" VBox.vgrow="NEVER" />
+                     <HBox fx:id="hbxButtons" maxHeight="45.0" minHeight="45.0" prefHeight="45.0" prefWidth="200.0" VBox.vgrow="NEVER" />
                         <ScrollPane fx:id="scrTop" fitToHeight="true" fitToWidth="true" pannable="true" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <content>
                             <AnchorPane>
@@ -74,7 +74,7 @@
                            <content>
                               <AnchorPane fx:id="panMap">
                                  <children>
-                                    <SplitPane dividerPositions="0.5, 0.5" prefHeight="200.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                                    <SplitPane dividerPositions="0.25, 0.75" prefHeight="200.0" prefWidth="355.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                        <items>
                                           <ScrollPane fx:id="scrLeft" fitToHeight="true" fitToWidth="true" prefWidth="250.0" SplitPane.resizableWithParent="false">
                                             <content>
