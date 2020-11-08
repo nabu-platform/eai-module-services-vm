@@ -44,7 +44,7 @@
                                                 <HBox fx:id="boxInterface" HBox.hgrow="ALWAYS">
 	                                                <children>
 		                                                <TextField fx:id="txtInterface" HBox.hgrow="ALWAYS" />
-		                                                <MenuButton fx:id="mnuInterfaces" mnemonicParsing="false" text="Definitions" />
+		                                                <MenuButton fx:id="mnuInterfaces" mnemonicParsing="false" text="Definitions" styleClass="inline"/>
 	                                                </children>
 	                                            </HBox>
                                                 <CheckBox fx:id="chkValidateOutput" mnemonicParsing="false" text="Validate Output" />

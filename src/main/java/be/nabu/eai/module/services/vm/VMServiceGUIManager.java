@@ -606,6 +606,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		HBox.setHgrow(searchBox, Priority.ALWAYS);
 		
 		serviceController.getHbxButtons().getChildren().add(searchBox);
+		serviceController.getHbxButtons().setAlignment(Pos.CENTER_LEFT);
 
 		serviceController.getPanService().getChildren().add(serviceTree);
 		
@@ -1600,6 +1601,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			outputTree.removeRefreshListener(rightTree.getTreeCell(rightTree.rootProperty().get()));
 		}
 		final VBox right = new VBox();
+		right.getStyleClass().add("small");
 		
 		StructureGUIManager structureManager = new StructureGUIManager();
 		structureManager.setActualId(actualId);
