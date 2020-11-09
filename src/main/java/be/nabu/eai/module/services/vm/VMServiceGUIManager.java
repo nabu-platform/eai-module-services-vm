@@ -420,7 +420,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		splitPane.getItems().add(top);
 //		serviceTree = new Tree<Step>(new StepMarshallable());
 		serviceTree = new Tree<Step>(new StepFactory(validations));
-		serviceTree.getStyleClass().add("serviceTree");
+		serviceTree.getStyleClass().addAll("serviceTree", "tree");
 		
 		validate(service);
 		
