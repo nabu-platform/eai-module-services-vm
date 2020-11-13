@@ -2,9 +2,12 @@ package be.nabu.eai.module.services.vm.util;
 
 import java.util.Arrays;
 
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.input.KeyCode;
@@ -36,7 +39,7 @@ public class Mapping {
 	 * This blocks access to anything underneath (like invokes)
 	 * Quad can only work if we can limit hits (hovers) to hovers over the border instead of the entire body
 	 */
-	public static CurveType curveType = CurveType.STRAIGHT;
+	public static CurveType curveType = CurveType.CUBIC;
 	
 	private SimpleDoubleProperty sourceX = new SimpleDoubleProperty(),
 			sourceY = new SimpleDoubleProperty(),
@@ -127,14 +130,60 @@ public class Mapping {
 		curve.endYProperty().bind(targetYProperty());
 		curve.setManaged(false);
 		// still not optimal
-		curve.controlX1Property().bind(targetXProperty().subtract(sourceXProperty()));
+//		curve.controlX1Property().bind(targetXProperty().subtract(sourceXProperty()));
+//		curve.controlY1Property().bind(sourceYProperty());
+//		curve.controlX2Property().bind(targetXProperty());
+//		curve.controlY2Property().bind(targetYProperty());
+		
 		curve.controlY1Property().bind(sourceYProperty());
-		curve.controlX2Property().bind(targetXProperty());
 		curve.controlY2Property().bind(targetYProperty());
+
+//		curve.controlX1Property().bind(sourceXProperty().add(targetXProperty().subtract(sourceXProperty()).multiply(0.3)));
+//		curve.controlX2Property().bind(sourceXProperty().add(targetXProperty().subtract(sourceXProperty()).multiply(0.7)));
+		
+		XDecider decider = new XDecider(sourceXProperty(), targetXProperty());
+		curve.controlX1Property().bind(decider.x1);
+		curve.controlX2Property().bind(decider.x2);
 		return curve;
 	}
 	
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static class XDecider {
+		private DoubleProperty x1 = new SimpleDoubleProperty(), x2 = new SimpleDoubleProperty();
+		private ReadOnlyDoubleProperty sourceX, targetX;
+		
+		public XDecider(ReadOnlyDoubleProperty sourceX, ReadOnlyDoubleProperty targetX) {
+			this.sourceX = sourceX;
+			this.targetX = targetX;
+			calculate();
+			sourceX.addListener(new ChangeListener<Number>() {
+				@Override
+				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
+					calculate();
+				}
+			});
+			targetX.addListener(new ChangeListener<Number>() {
+				@Override
+				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
+					calculate();
+				}
+			});
+		}
+		
+		private void calculate() {
+			x1.set(Math.max(sourceX.get() + 150, sourceX.get() + ((targetX.get() - sourceX.get()) * 0.3)));
+			x2.set(Math.min(targetX.get() - 150, sourceX.get() + ((targetX.get() - sourceX.get()) * 0.7)));
+//			// at least some distance between them
+//			if (sourceX.get() < targetX.get() - 50) {
+//				x1.set(sourceX.get() + ((targetX.get() - sourceX.get()) * 0.3));
+//				x2.set(sourceX.get() + ((targetX.get() - sourceX.get()) * 0.7));
+//			}
+//			else {
+//				x1.set(sourceX.get() + 150);
+//				x2.set(targetX.get() - 150);
+//			}
+		}
+	}
+	
 	private Shape drawQuadCurve() {
 		QuadCurve curve = new QuadCurve();
 		curve.eventSizeProperty().set(5);
@@ -144,7 +193,8 @@ public class Mapping {
 		curve.endXProperty().bind(targetXProperty());
 		curve.endYProperty().bind(targetYProperty());
 		curve.setManaged(false);
-		curve.controlYProperty().bind(new ComparableAmountListener(targetYProperty(), sourceYProperty()).maxProperty());
+//		curve.controlYProperty().bind(new ComparableAmountListener(targetYProperty(), sourceYProperty()).maxProperty());
+		curve.controlYProperty().bind(targetYProperty());
 		curve.controlXProperty().bind(sourceXProperty().add(targetXProperty().subtract(sourceXProperty()).divide(2d)));
 		return curve;
 	}

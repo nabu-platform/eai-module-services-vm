@@ -1,6 +1,7 @@
 package be.nabu.eai.module.services.vm;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javafx.beans.property.ObjectProperty;
@@ -19,6 +20,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.util.Callback;
 import be.nabu.eai.developer.MainController;
+import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.Entry;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeCellValue;
 import be.nabu.jfx.control.tree.TreeItem;
@@ -233,20 +236,39 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 			
 			String comment = step.getComment();
 			if (comment == null && step instanceof Map) {
-				Invoke invoke = null;
+				java.util.Map<String, Invoke> invokes = new HashMap<String, Invoke>();
 				for (Step child : ((Map) step).getChildren()) {
 					if (child instanceof Invoke) {
-						if (invoke == null) {
-							invoke = (Invoke) child;
-						}
-						else {
-							invoke = null;
-							break;
-						}
+						String serviceId = ((Invoke) child).getServiceId();
+						invokes.put(serviceId, (Invoke) child);
 					}
 				}
-				if (invoke != null) {
-					comment = invoke.getServiceId();
+				if (!invokes.isEmpty()) {
+					List<String> ids = new ArrayList<String>(invokes.keySet());
+					StringBuilder commentBuilder = new StringBuilder();
+					for (int i = 0; i < ids.size(); i++) {
+						if (i > 0) {
+							if (i < ids.size() - 1) {
+								commentBuilder.append(", ");
+							}
+							else {
+								commentBuilder.append(" and ");
+							}
+						}
+						Entry entry = EAIResourceRepository.getInstance().getEntry(ids.get(i));
+						if (entry != null && entry.getNode().getComment() != null) {
+							if (i > 0) {
+								commentBuilder.append(entry.getNode().getComment().substring(0, 1).toLowerCase() + entry.getNode().getComment().substring(1));
+							}
+							else {
+								commentBuilder.append(entry.getNode().getComment());
+							}
+						}
+						else {
+							commentBuilder.append(ids.get(i));
+						}
+					}
+					comment = commentBuilder.toString();
 				}
 			}
 			

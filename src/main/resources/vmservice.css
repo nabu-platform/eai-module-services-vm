@@ -113,6 +113,10 @@
 .maskLine {
 	-fx-stroke: #FF6347;
 }
+.connectionLine:focused {
+	-fx-stroke: #3465a4;
+	-fx-stroke-width: 3px;
+}
 
 .indexQueryLine {
 	-fx-stroke: #20B2AA;
@@ -130,6 +134,11 @@
 
 .invokeServiceName {
 	-fx-text-fill: #553600;
+}
+.invokeSubscript {
+	-fx-font-size: 0.9em;
+	-fx-text-fill: #897147;
+	-fx-padding: 0px 5px 4px 5px;
 }
 .invokeOrder {
 	-fx-text-fill: #cbb793;

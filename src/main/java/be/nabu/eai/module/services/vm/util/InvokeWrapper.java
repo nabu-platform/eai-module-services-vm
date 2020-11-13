@@ -47,8 +47,10 @@ import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -250,12 +252,32 @@ public class InvokeWrapper {
 		
 		vbox.getStyleClass().add("invokeWrapper");
 		HBox name = new HBox();
+		name.setAlignment(Pos.CENTER_LEFT);
 		name.getStyleClass().add("invokeName");
+		VBox mainNameBox = new VBox();
 		Label nameLabel = new Label(invoke.getServiceId());
 		nameLabel.getStyleClass().add("invokeServiceName");
-		Label invokeLevelLabel = new Label("[" + invoke.getInvocationOrder() + "]");
-		invokeLevelLabel.getStyleClass().add("invokeOrder");
-		name.getChildren().addAll(invokeLevelLabel, nameLabel);
+		mainNameBox.getChildren().add(nameLabel);
+		Label subscript = null;
+		Entry entry = repository.getEntry(invoke.getServiceId());
+		if (entry != null) {
+			ImageView graphic = controller.getGUIManager(entry.getNode().getArtifactClass()).getGraphic();
+			new CustomTooltip("Invoke order: " + invoke.getInvocationOrder()).install(graphic);
+			name.getChildren().add(MainController.wrapInFixed(graphic, 25, 25));
+			String comment = entry.getNode().getComment();
+			if (comment != null) {
+				nameLabel.setText(comment);
+				nameLabel.setWrapText(true);
+				subscript = new Label(invoke.getServiceId());
+				subscript.getStyleClass().add("invokeSubscript");
+				mainNameBox.getChildren().add(subscript);
+			}
+		}
+		
+//		Label invokeLevelLabel = new Label("[" + invoke.getInvocationOrder() + "]");
+//		invokeLevelLabel.getStyleClass().add("invokeOrder");
+//		name.getChildren().addAll(invokeLevelLabel, mainNameBox);
+		name.getChildren().add(mainNameBox);
 		
 		// add more info about the service if available
 		if (service != null && service.getDescription() != null) {
