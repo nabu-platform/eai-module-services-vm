@@ -186,6 +186,9 @@
 	-fx-text-fill: white;
 	-fx-background-color: #1f72f4;
 }
+.selected .text-field {
+	-fx-text-fill: white;
+}
 
 .selected .vm-comment {
 	-fx-background-color: #1f72f4;

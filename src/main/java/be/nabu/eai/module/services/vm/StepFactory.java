@@ -26,11 +26,13 @@ import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeCellValue;
 import be.nabu.jfx.control.tree.TreeItem;
 import be.nabu.libs.services.vm.api.Step;
+import be.nabu.libs.services.vm.step.Break;
 import be.nabu.libs.services.vm.step.Catch;
 import be.nabu.libs.services.vm.step.For;
 import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Link;
 import be.nabu.libs.services.vm.step.Map;
+import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.step.Switch;
 import be.nabu.libs.services.vm.step.Throw;
 import be.nabu.libs.validator.api.Validation;
@@ -364,6 +366,35 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				to.getStyleClass().add("vm-margin-left");
 				
 				box.getChildren().addAll(from, pointer, to);
+			}
+			else if (step instanceof Break) {
+				Step breakTarget = step;
+				int counter = ((Break) step).getCount();
+				while (counter > 0) {
+					breakTarget = breakTarget.getParent();
+					if (breakTarget == null) {
+						break;
+					}
+					// only these types actually decrease the break count
+					if (breakTarget instanceof Sequence || breakTarget instanceof For) {
+						counter--;
+					}
+				}
+				Label code = new Label("[" + ((Break) step).getCount() + "]");
+				code.getStyleClass().addAll("vm-value", "vm-throw-code");
+				Label outOf = new Label("out of");
+				outOf.getStyleClass().add("vm-description");
+				box.getChildren().addAll(code, outOf);
+					
+				String name = breakTarget == null ? "INVALID" : breakTarget.getName();
+				if (name == null) {
+					name = breakTarget.getClass().getSimpleName().replaceAll("^.*\\.", "");
+				}
+				
+				Label query = new Label(name);
+				query.getStyleClass().add("vm-value");
+				
+				box.getChildren().addAll(query);
 			}
 			
 			if (comment != null) {

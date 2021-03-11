@@ -122,11 +122,12 @@ public class InvokeWrapper {
 					TreeItem<Entry> resolve = tree.resolve(invoke.getServiceId().replace(".", "/"));
 					if (resolve != null) {
 						TreeCell<Entry> treeCell = tree.getTreeCell(resolve);
-						treeCell.show();
+						// if you _first_ do show and _then_ select, it doesn't work in the oddest way, the tree does jump open, the selection is correct, everything works...except for the autoscroll
+						// the autoscroll calculates the positions just fine, the only thing that _doesn't_ work is setVvalue on the scrollbar, it is simply ignored
 						treeCell.select();
-						tree.autoscroll();
-						MainController.getInstance().getStage().requestFocus();
-						tree.requestFocus();
+						treeCell.show();
+						tree.autoscroll(true);
+						MainController.getInstance().switchToRepository();
 					}
 					event.consume();
 				}
@@ -281,7 +282,7 @@ public class InvokeWrapper {
 		
 		// add more info about the service if available
 		if (service != null && service.getDescription() != null) {
-			Node loadGraphic = MainController.loadFixedSizeGraphic("info2.png", 10, 16);
+			Node loadGraphic = MainController.getInfoIcon();
 			CustomTooltip customTooltip = new CustomTooltip(service.getDescription());
 			customTooltip.install(loadGraphic);
 			customTooltip.setMaxWidth(400d);
@@ -410,7 +411,7 @@ public class InvokeWrapper {
 			vbox.getStyleClass().add("nonExistent");
 		}
 		pane.getChildren().add(vbox);
-		pane.setManaged(false);
+//		pane.setManaged(false);
 		pane.setLayoutX(invoke.getX());
 		pane.setLayoutY(invoke.getY());
 		return pane;

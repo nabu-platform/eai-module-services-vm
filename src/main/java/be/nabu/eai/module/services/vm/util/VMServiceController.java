@@ -18,6 +18,7 @@ import javafx.scene.control.Control;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
@@ -42,6 +43,9 @@ public class VMServiceController implements Initializable, Controller {
 	
 	@FXML
 	private HBox hbxButtons, hbxButtons2, boxInterface;
+	
+	@FXML
+	private TabPane allTabs;
 	
 	@FXML
 	private Tab tabMap, tabInterface, tabDescription;
@@ -84,14 +88,17 @@ public class VMServiceController implements Initializable, Controller {
 
 	@Override
 	public void initialize(URL arg0, ResourceBundle arg1) {
+		// we no longer do the maximize this way!
+		// because we now put hard constraints on the panmap, it is no longer "easy" to just take it out anyway
+		// let's just foggettabout it
 		getTabMap().getContent().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
 				if (event.getCode() == KeyCode.F11) {
-					maximize();
+//					maximize();
 				}
 				else if (event.getCode() == KeyCode.SPACE && event.isControlDown() && event.isShiftDown()) {
-					maximize();
+//					maximize();
 				}
 			}
 		});
@@ -100,14 +107,25 @@ public class VMServiceController implements Initializable, Controller {
 			public void handle(KeyEvent event) {
 				if (!getTabMap().disabledProperty().get()) {
 					if (event.getCode() == KeyCode.F11) {
-						maximize();
+//						maximize();
 					}
 					else if (event.getCode() == KeyCode.SPACE && event.isControlDown() && event.isShiftDown()) {
-						maximize();
+//						maximize();
 					}
 				}
 			}
 		});
+		// the allTabs includes the space of the actual tab selectors
+		// if we just put the panMap in the tab, it will grow almost as large as the content rather than sticking to the given space
+		// this makes the scrollpanes within useless
+		// we force this size to make sure we can actually scroll properly
+		// note that modules that depend on this panmap without the tabs (e.g. workflow), they might need to do some manual overrides!
+		panMap.maxHeightProperty().bind(allTabs.heightProperty().subtract(30));
+		panMap.maxWidthProperty().bind(allTabs.widthProperty());
+		panMap.prefHeightProperty().bind(allTabs.heightProperty().subtract(30));
+		panMap.prefWidthProperty().bind(allTabs.widthProperty());
+		panMap.minHeightProperty().bind(allTabs.heightProperty().subtract(30));
+		panMap.minWidthProperty().bind(allTabs.widthProperty());
 	}
 
 	private void maximize() {
