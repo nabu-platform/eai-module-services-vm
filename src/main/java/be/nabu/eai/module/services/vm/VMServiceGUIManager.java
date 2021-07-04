@@ -54,6 +54,7 @@ import be.nabu.eai.module.services.vm.util.StepPropertyProvider;
 import be.nabu.eai.module.services.vm.util.StepTreeItem;
 import be.nabu.eai.module.services.vm.util.VMServiceController;
 import be.nabu.eai.module.types.structure.StructureGUIManager;
+import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
@@ -484,6 +485,11 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 		
+		// TODO: the description was added to the service spec but the comment is based on the node
+		// should bring these two together, the node-based approach has the advantage that it is standardized across artifact type (not only service)
+		// the service approach might have the advantage for "generated" services that don't actually have a node
+		// although they are represented in a memory entry that still has a fictive node, so the artifact manager should be able to put it in there as well
+		// to be seen in the future...
 		if (!service.isSupportsDescription()) {
 			serviceController.getTabDescription().setDisable(true);
 		}
@@ -496,6 +502,27 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					MainController.getInstance().setChanged();
 				}
 			});
+			boolean showComment = false;
+			Entry entry = MainController.getInstance().getRepository().getEntry(service.getId());
+			if (entry != null && entry.isNode()) {
+				be.nabu.eai.repository.api.Node node = entry.getNode();
+				if (node instanceof EAINode) {
+					serviceController.getTxtComment().setText(node.getComment());
+					serviceController.getTxtComment().textProperty().addListener(new ChangeListener<String>() {
+						@Override
+						public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+							((EAINode) node).setComment(newValue);
+							MainController.getInstance().setChanged();
+						}
+					});
+					showComment = true;
+				}
+			}
+			// hide the comment if we can't edit it
+			if (!showComment) {
+				serviceController.getTxtComment().setManaged(false);
+				serviceController.getTxtComment().setVisible(false);
+			}
 		}
 		
 		serviceTree.rootProperty().set(new StepTreeItem(service.getRoot(), null, false, locked));

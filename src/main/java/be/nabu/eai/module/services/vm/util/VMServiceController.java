@@ -57,7 +57,7 @@ public class VMServiceController implements Initializable, Controller {
 	private VBox vbxInterface;
 	
 	@FXML
-	private TextField txtInterface;
+	private TextField txtInterface, txtComment;
 	
 	@FXML
 	private MenuButton mnuInterfaces;
@@ -242,6 +242,14 @@ public class VMServiceController implements Initializable, Controller {
 
 	public void setTxtDescription(TextArea txtDescription) {
 		this.txtDescription = txtDescription;
+	}
+
+	public TextField getTxtComment() {
+		return txtComment;
+	}
+
+	public void setTxtComment(TextField txtComment) {
+		this.txtComment = txtComment;
 	}
 
 	public Tab getTabDescription() {

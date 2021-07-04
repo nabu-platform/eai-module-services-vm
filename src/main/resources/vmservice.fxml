@@ -101,8 +101,11 @@
                         	<content>
                               <AnchorPane fx:id="panDescription">
                                  <children>
-                                 	<TextArea fx:id="txtDescription" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                                 	</TextArea>
+	                                 <VBox fx:id="vbxDescription" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+	                                 	<TextField fx:id="txtComment" promptText="Short description of what this service does"></TextField>
+	                                 	<TextArea fx:id="txtDescription" promptText="Long description of what this service does" VBox.vgrow="ALWAYS">
+	                                 	</TextArea>
+                                 	</VBox>
                                  </children>
                               </AnchorPane>
                            </content>
