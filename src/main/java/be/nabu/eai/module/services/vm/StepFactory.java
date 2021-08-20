@@ -302,6 +302,13 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					list.getStyleClass().add("vm-value");
 					box.getChildren().addAll(in, list);
 				}
+				if (((For) step).getInto() != null) {
+					Label in = new Label("into");
+					in.getStyleClass().add("vm-description");
+					Label list = new Label(((For) step).getInto());
+					list.getStyleClass().add("vm-value");
+					box.getChildren().addAll(in, list);
+				}
 			}
 			else if (step instanceof Switch) {
 				if (((Switch) step).getQuery() != null) {
