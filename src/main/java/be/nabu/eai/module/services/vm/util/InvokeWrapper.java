@@ -131,6 +131,10 @@ public class InvokeWrapper {
 					}
 					event.consume();
 				}
+				// copy the service
+				else if (event.getCode() == KeyCode.C && event.isControlDown()) {
+					MainController.copy(invoke.getServiceId());
+				}
 			}
 		};
 		pane.addEventHandler(KeyEvent.KEY_PRESSED, keyHandler);

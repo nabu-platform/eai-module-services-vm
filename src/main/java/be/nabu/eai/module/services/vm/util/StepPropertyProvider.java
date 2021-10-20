@@ -83,6 +83,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
+			properties.add(new ScopeDefaultTransactionProperty());
 			properties.add(new SuppressExceptionProperty());
 		}
 		return properties;
@@ -144,6 +145,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
+			values.add(new ValueImpl<Boolean>(new ScopeDefaultTransactionProperty(), ((Sequence) step).getScopeDefaultTransaction()));
 			values.add(new ValueImpl<Boolean>(new SuppressExceptionProperty(), ((Sequence) step).getSuppressException()));
 		}
 		return values.toArray(new Value[0]);
@@ -278,6 +280,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 					MainController.getInstance().notify(new ValidationMessage(Severity.ERROR, "The variable name '" + variableName + "' is not a valid name"));
 				}
 			}
+			else if (property instanceof ScopeDefaultTransactionProperty) {
+				((Sequence) step).setScopeDefaultTransaction((Boolean) value);
+			}
 			else if (property instanceof SuppressExceptionProperty) {
 				((Sequence) step).setSuppressException((Boolean) value);
 			}
@@ -368,6 +373,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public Class<String> getValueClass() {
 			return String.class;
+		}
+	}
+	
+	public static class ScopeDefaultTransactionProperty extends BaseProperty<Boolean> {
+		@Override
+		public String getName() {
+			return "scopeDefaultTransaction";
+		}
+		@Override
+		public Validator<Boolean> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<Boolean> getValueClass() {
+			return Boolean.class;
 		}
 	}
 	

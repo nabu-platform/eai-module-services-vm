@@ -71,6 +71,7 @@ import be.nabu.jfx.control.tree.TreeItem;
 import be.nabu.jfx.control.tree.drag.TreeDragDrop;
 import be.nabu.jfx.control.tree.drag.TreeDragListener;
 import be.nabu.jfx.control.tree.drag.TreeDropListener;
+import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.evaluator.QueryParser;
 import be.nabu.libs.evaluator.QueryPart;
 import be.nabu.libs.property.ValueUtils;
@@ -142,6 +143,8 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
@@ -318,6 +321,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	private ObservableList<Validation<?>> validations = FXCollections.observableArrayList();
 
 	private Tree<Step> serviceTree;
+	private VMService service;
 
 	@Override
 	public String getArtifactName() {
@@ -405,8 +409,9 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	}
 	
 	public VMServiceController displayWithController(final MainController controller, Pane pane, final VMService service) throws IOException, ParseException {
+		this.service = service;
 		FXMLLoader loader = controller.load("vmservice.fxml", "Service", false);
-		final VMServiceController serviceController = loader.getController();
+		serviceController = loader.getController();
 		
 		String id = getId(service);
 		Repository repository = EAIResourceRepository.getInstance();
@@ -1198,6 +1203,33 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		serviceController.getPanMiddle().addEventHandler(DragEvent.DRAG_OVER, serviceDragOverHandler);
 		serviceTree.addEventHandler(DragEvent.DRAG_OVER, serviceDragOverHandler);		
 		
+		serviceController.getPanMiddle().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+			@Override
+			public void handle(KeyEvent event) {
+				if (event.getCode() == KeyCode.V && event.isControlDown()) {
+					Clipboard clipboard = Clipboard.getSystemClipboard();
+					Object content = clipboard.getContent(TreeDragDrop.getDataFormat(RepositoryBrowser.getDataType(DefinedService.class)));
+					if (content == null) {
+						content = clipboard.getContent(DataFormat.PLAIN_TEXT);
+					}
+					if (content instanceof String) {
+						Artifact resolve = MainController.getInstance().getRepository().resolve((String) content);
+						if (resolve instanceof DefinedService) {
+							addServiceInvoke((String) content);
+						}
+					}
+				}
+			}
+		});
+		serviceController.getPanMiddle().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+			@Override
+			public void handle(MouseEvent event) {
+				if (serviceController.getPanMiddle().equals(event.getTarget())) {
+					serviceController.getPanMiddle().requestFocus();
+				}
+			}
+		});
+		
 		EventHandler<DragEvent> serviceDragDropHandler = new EventHandler<DragEvent>() {
 			@Override
 			public void handle(DragEvent event) {
@@ -1272,6 +1304,28 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return serviceController;
 	}
 
+	public void addServiceInvoke(String serviceId) {
+		if (serviceTree.getSelectionModel().getSelectedItem() != null) {
+			Step step = serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get();
+			if (step instanceof Map) {
+				Map target = (Map) step;
+		
+				Invoke invoke = new Invoke();
+				invoke.setParent(target);
+				invoke.setServiceId(serviceId);
+				// the position is relative to where you dropped it, not the scene!
+		//			invoke.setX(event.getSceneX());
+		//			invoke.setY(event.getSceneY());
+				invoke.setX(0);
+				invoke.setY(0);
+				target.getChildren().add(invoke);
+				drawInvoke(MainController.getInstance(), invoke, invokeWrappers, serviceController, service, serviceTree, MainController.getInstance().hasLock(getId(service)), MainController.getInstance().getRepository(), getId(service));
+				serviceTree.getSelectionModel().getSelectedItem().refresh();
+				MainController.getInstance().setChanged();
+			}
+		}
+	}
+	
 	void validate(final VMService service) {
 		List<Validation<?>> validate = service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
 		validations.clear();
@@ -1390,6 +1444,11 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 		else if (step instanceof Switch) {
 			if (((Switch) step).getQuery() != null && ((Switch) step).getQuery().matches(regex)) {
+				return true;
+			}
+		}
+		else if (step instanceof Drop) {
+			if (((Drop) step).getPath() != null && ((Drop) step).getPath().matches(regex)) {
 				return true;
 			}
 		}
@@ -2095,6 +2154,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	}
 	
 	private String actualId;
+	private VMServiceController serviceController;
 
 	public String isActualId() {
 		return actualId;
