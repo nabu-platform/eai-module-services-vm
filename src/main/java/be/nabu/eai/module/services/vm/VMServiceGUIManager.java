@@ -62,12 +62,14 @@ import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.jfx.control.tree.ContextMenuProvider;
 import be.nabu.jfx.control.tree.Marshallable;
 import be.nabu.jfx.control.tree.MovableTreeItem;
 import be.nabu.jfx.control.tree.MovableTreeItem.Direction;
 import be.nabu.jfx.control.tree.Tree;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeItem;
+import be.nabu.jfx.control.tree.TreeUtils;
 import be.nabu.jfx.control.tree.drag.TreeDragDrop;
 import be.nabu.jfx.control.tree.drag.TreeDragListener;
 import be.nabu.jfx.control.tree.drag.TreeDropListener;
@@ -192,14 +194,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 		List<Element<?>> inputs = new ArrayList<Element<?>>(TypeUtils.getAllChildren((ComplexType) service.getPipeline().get(Pipeline.INPUT).getType()));
 		List<Element<?>> outputs = new ArrayList<Element<?>>(TypeUtils.getAllChildren((ComplexType) service.getPipeline().get(Pipeline.OUTPUT).getType()));
-		removeUsedPipelineElements(elements, inputs, outputs, service.getRoot());
+		removeUsedPipelineElements(elements, inputs, outputs, service.getRoot(), null);
 		// add the remaining inputs and outputs that are unused as well
 		elements.addAll(inputs);
 		elements.addAll(outputs);
 		return elements;
 	}
 	
-	private static void removeUsedPipelineElements(List<Element<?>> elements, List<Element<?>> inputs, List<Element<?>> outputs, Step step) throws ParseException {
+	private static void removeUsedPipelineElements(List<Element<?>> elements, List<Element<?>> inputs, List<Element<?>> outputs, Step step, Step parent) throws ParseException {
 		if (step instanceof Link) {
 			if (((Link) step).isFixedValue() && ((Link) step).getFrom().startsWith("=")) {
 				ParsedPath from = new ParsedPath(((Link) step).getFrom().substring(1));
@@ -209,8 +211,12 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				ParsedPath from = new ParsedPath(((Link) step).getFrom());
 				removeUsedPipelineElements(elements, inputs, outputs, from, true);
 			}
-			ParsedPath to = new ParsedPath(((Link) step).getTo());
-			removeUsedPipelineElements(elements, inputs, outputs, to, true);
+			// if a link resides _inside_ an invoke, the "to" is local to the invoke input
+			// it can not determine the use (or not-use) of a global parameter
+			if (!(parent instanceof Invoke)) {
+				ParsedPath to = new ParsedPath(((Link) step).getTo());
+				removeUsedPipelineElements(elements, inputs, outputs, to, true);
+			}
 		}
 		if (step.getLabel() != null) {
 			removeUsedPipelineElements(elements, inputs, outputs, step.getLabel());
@@ -236,7 +242,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		// recurse
 		if (step instanceof StepGroup) {
 			for (Step child : ((StepGroup) step).getChildren()) {
-				removeUsedPipelineElements(elements, inputs, outputs, child);
+				removeUsedPipelineElements(elements, inputs, outputs, child, step);
 			}
 		}
 	}
@@ -1789,7 +1795,21 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				}
 			});
 			menu.getItems().add(removeUnused);
-			rightTree.setContextMenu(menu);
+			
+			rightTree.setContextMenuProvider(new ContextMenuProvider<Element<?>>() {
+				@Override
+				public ContextMenu getMenu(List<TreeCell<Element<?>>> selectedItems) {
+					if (!selectedItems.isEmpty()) {
+						TreeCell<Element<?>> treeCell = selectedItems.get(0);
+						String path = TreeUtils.getPath(treeCell.getItem());
+						if (path.equals("pipeline")) {
+							return menu;
+						}
+					}
+					return null;
+				}
+			});
+//			rightTree.setContextMenu(menu);
 			return rightTree;
 		}
 		catch (IOException e) {
