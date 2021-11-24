@@ -44,7 +44,8 @@ public class FindStepContextMenu implements EntryContextMenuProvider {
 								if (findInEntry != null) {
 									Tab tab = MainController.getInstance().getTab(findInEntry.getId());
 									if (tab == null) {
-										RepositoryBrowser.open(MainController.getInstance(), findInEntry);
+										MainController.getInstance().open(findInEntry.getId());
+//										RepositoryBrowser.open(MainController.getInstance(), findInEntry);
 									}
 									else {
 										MainController.getInstance().activate(findInEntry.getId());

@@ -119,6 +119,7 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 				mapping.removeStyleClass("indexQueryLine");
 			}
 		}
+		mapping.calculateLabels();
 		MainController.getInstance().setChanged();
 		return new ArrayList<ValidationMessage>();
 	}

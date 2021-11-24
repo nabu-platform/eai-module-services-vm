@@ -11,8 +11,13 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+
+import java.util.Set;
+
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.module.services.vm.VMServiceGUIManager;
 import be.nabu.jfx.control.tree.DisablableTreeItem;
@@ -35,8 +40,10 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 	private ObservableList<TreeItem<Step>> children = FXCollections.observableArrayList();
 	private BooleanProperty disableProperty = new SimpleBooleanProperty(false);
 	private ReadOnlyBooleanProperty hasLock;
+	private Pane pane;
 	
-	public StepTreeItem(Step step, StepTreeItem parent, boolean isEditable, ReadOnlyBooleanProperty hasLock) {
+	public StepTreeItem(Pane pane, Step step, StepTreeItem parent, boolean isEditable, ReadOnlyBooleanProperty hasLock) {
+		this.pane = pane;
 		this.hasLock = hasLock;
 		this.itemProperty.set(step);
 		this.parent = parent;
@@ -83,7 +90,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 			TreeUtils.refreshChildren(new TreeItemCreator<Step>() {
 				@Override
 				public TreeItem<Step> create(TreeItem<Step> parent, Step child) {
-					return new StepTreeItem(child, (StepTreeItem) parent, editableProperty.get(), hasLock);	
+					return new StepTreeItem(pane, child, (StepTreeItem) parent, editableProperty.get(), hasLock);	
 				}
 			}, this, ((StepGroup) itemProperty.get()).getChildren());
 		}
@@ -114,10 +121,22 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 		return leafProperty;
 	}
 
+	private void renumber(Step stepToRenumber) {
+		VMServiceUtils.renumber(stepToRenumber);
+		Set<Node> lookupAll = pane.lookupAll(".vm-line-number");
+		for (Node node : lookupAll) {
+			Step step = (Step) node.getUserData();
+			if (step.getLineNumber() != null) {
+				((Label) node).setText("" + step.getLineNumber());
+			}
+		}
+	}
+	
 	@Override
 	public boolean remove() {
 		if ((hasLock == null || hasLock.get()) && itemProperty().get().getParent() != null) {
 			itemProperty().get().getParent().getChildren().remove(itemProperty().get());
+			renumber(itemProperty.get());
 			MainController.getInstance().setChanged();
 			return true;
 		}
@@ -136,6 +155,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 						if (indexInParent < step.getParent().getChildren().size() - 1) {
 							step.getParent().getChildren().remove(indexInParent);
 							step.getParent().getChildren().add(indexInParent + 1, step);
+							renumber(step);
 							getParent().refresh();
 						}
 					break;
@@ -143,6 +163,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 						if (indexInParent > 0) {
 							step.getParent().getChildren().remove(indexInParent);
 							step.getParent().getChildren().add(indexInParent - 1, step);
+							renumber(step);
 							getParent().refresh();
 						}
 					break;
@@ -156,6 +177,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 									((StepGroup) targetParent).getChildren().add(step);
 									step.setParent((StepGroup) targetParent);
 									getParent().getChildren().get(indexInParent - 1).refresh();
+									renumber(step);
 									getParent().refresh();
 								}
 							}
@@ -169,6 +191,7 @@ public class StepTreeItem implements RemovableTreeItem<Step>, MovableTreeItem<St
 								step.getParent().getChildren().remove(indexInParent);
 								targetParent.getChildren().add(indexInNewParent + 1, step);
 								step.setParent(targetParent);
+								renumber(step);
 								getParent().getParent().refresh();
 								getParent().refresh();
 							}

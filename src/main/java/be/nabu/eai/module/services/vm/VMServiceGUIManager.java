@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -53,6 +54,7 @@ import be.nabu.eai.module.services.vm.util.StepClipboardHandler;
 import be.nabu.eai.module.services.vm.util.StepPropertyProvider;
 import be.nabu.eai.module.services.vm.util.StepTreeItem;
 import be.nabu.eai.module.services.vm.util.VMServiceController;
+import be.nabu.eai.module.services.vm.util.VMServiceUtils;
 import be.nabu.eai.module.types.structure.StructureGUIManager;
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
@@ -414,7 +416,24 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return service;
 	}
 	
+	private void renumber(Node pane) {
+		VMServiceUtils.renumber(service);
+		Set<Node> lookupAll = pane.lookupAll(".vm-line-number");
+		for (Node node : lookupAll) {
+			Step step = (Step) node.getUserData();
+			if (step.getLineNumber() != null) {
+				((Label) node).setText("" + step.getLineNumber());
+			}
+		}
+	}
+	
 	public VMServiceController displayWithController(final MainController controller, Pane pane, final VMService service) throws IOException, ParseException {
+		// any service before line numbers is automatically numbered going forwards
+		// this is not automatically saved or even shows a save option by design
+		if (service.getRoot().getLineNumber() == null) {
+			VMServiceUtils.renumber(service);
+		}
+		
 		this.service = service;
 		FXMLLoader loader = controller.load("vmservice.fxml", "Service", false);
 		serviceController = loader.getController();
@@ -536,7 +555,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		}
 		
-		serviceTree.rootProperty().set(new StepTreeItem(service.getRoot(), null, false, locked));
+		serviceTree.rootProperty().set(new StepTreeItem(pane, service.getRoot(), null, false, locked));
 		serviceTree.getRootCell().expandedProperty().set(true);
 		// disable map tab
 		serviceController.getTabMap().setDisable(true);
@@ -590,6 +609,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 										((StepGroup) step).getChildren().add(indexOf + 1, instance);
 									}
 									parent.getItem().refresh();
+									
+									// renumber to match
+									renumber(pane);
+									
 									MainController.getInstance().setChanged();
 								}
 								catch (Exception e) {
@@ -965,7 +988,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						removeUnusedElements(service);
 						
 						// open it in a new tab
-						RepositoryBrowser.open(MainController.getInstance(), createNode);
+//						RepositoryBrowser.open(MainController.getInstance(), createNode);
+						MainController.getInstance().open(createNode.getId());
 						// refocus on refactored service
 						MainController.getInstance().activate(entry.getId());
 					}
@@ -1406,6 +1430,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	private static boolean matches(Step step, String text, boolean recursive) {
 		String regex = "(?i).*" + text + ".*";
 		if (step.getId() != null && step.getId().equals(text)) {
+			return true;
+		}
+		// if you are typing a line number, match it
+		else if (step.getLineNumber() != null && text.matches("^[0-9]+$") && step.getLineNumber().equals(Integer.parseInt(text))) {
 			return true;
 		}
 		else if (step.getComment() != null && step.getComment().matches(regex)) {
@@ -1932,7 +1960,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	}
 	
 	public static Mapping buildMapping(final Link link, Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to, ReadOnlyBooleanProperty lock) {
-		Mapping mapping = new Mapping(target, from, to, lock);
+		Mapping mapping = new Mapping(link, target, from, to, lock);
 		mapping.getShape().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
@@ -1957,6 +1985,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						link.setTo(path.toString());
 						MainController.getInstance().setChanged();
 					}
+					mapping.calculateLabels();
 				}
 			}
 		});
@@ -2053,6 +2082,10 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					}
 				}
 				((StepTreeItem) selectedItem.getItem()).refresh();
+				
+				// renumber to match
+				renumber(serviceTree);
+				
 				// add an element next to it
 				// TODO
 			}

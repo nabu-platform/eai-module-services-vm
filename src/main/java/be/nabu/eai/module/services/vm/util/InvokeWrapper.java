@@ -271,7 +271,8 @@ public class InvokeWrapper {
 			name.getChildren().add(MainController.wrapInFixed(graphic, 25, 25));
 			String comment = entry.getNode().getComment();
 			if (comment != null) {
-				nameLabel.setText(comment);
+//				nameLabel.setText(comment);
+				nameLabel.setText(VMServiceUtils.templateServiceComment(invoke));
 				nameLabel.setWrapText(true);
 				subscript = new Label(invoke.getServiceId());
 				subscript.getStyleClass().add("invokeSubscript");

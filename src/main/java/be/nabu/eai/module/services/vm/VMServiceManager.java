@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
+import be.nabu.eai.module.services.vm.util.VMServiceUtils;
 import be.nabu.eai.module.types.structure.StructureManager;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
@@ -114,6 +115,9 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 	@Override
 	public List<Validation<?>> save(ResourceEntry entry, VMService artifact) throws IOException {
 		new ServiceInterfaceManager().savePipeline(entry, artifact.getPipeline());
+		
+		// make sure the line numbers are correct
+		VMServiceUtils.renumber(artifact);
 		
 		// next we load the root sequence
 		formatSequence(new ResourceWritableContainer((WritableResource) EAIRepositoryUtils.getResource(entry, "service.xml", true)), artifact.getRoot());

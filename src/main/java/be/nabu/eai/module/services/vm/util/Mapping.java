@@ -6,24 +6,41 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
+import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Shape;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.managers.util.ComparableAmountListener;
 import be.nabu.eai.developer.managers.util.RelativeLocationListener;
+import be.nabu.eai.developer.util.EAIDeveloperUtils;
 import be.nabu.jfx.control.line.CubicCurve;
 import be.nabu.jfx.control.line.Line;
 import be.nabu.jfx.control.line.QuadCurve;
 import be.nabu.jfx.control.tree.TreeCell;
+import be.nabu.libs.evaluator.types.api.TypeOperation;
+import be.nabu.libs.services.vm.step.Link;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.types.api.Type;
 
 public class Mapping {
 	
@@ -60,8 +77,18 @@ public class Mapping {
 	private Pane target;
 
 	private ReadOnlyBooleanProperty lock;
+	
+	private Link link;
 
-	public Mapping(Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to, ReadOnlyBooleanProperty lock) {
+	private Label lblSource;
+	private Label lblTarget;
+
+	private HBox flwSource;
+
+	private HBox flwTarget;
+
+	public Mapping(Link link, Pane target, TreeCell<Element<?>> from, TreeCell<Element<?>> to, ReadOnlyBooleanProperty lock) {
+		this.link = link;
 		this.target = target;
 		this.from = from;
 		this.to = to;
@@ -110,6 +137,103 @@ public class Mapping {
 			.add(toSceneTransform.yProperty())
 			.subtract(targetTransform.yProperty())
 			.subtract(toParentTransform.yProperty()));
+		
+		
+		flwSource = new HBox();
+		flwTarget = new HBox();
+		lblSource = new Label();
+		lblTarget = new Label();
+		// if we set managed to false, we don't get styling
+//		flwSource.setManaged(false);
+//		flwTarget.setManaged(false);
+		flwSource.getChildren().add(lblSource);
+		flwTarget.getChildren().add(lblTarget);
+		
+		flwSource.getStyleClass().add("line-label");
+		flwTarget.getStyleClass().add("line-label");
+		
+		calculateLabels();
+		
+		if (shape instanceof CubicCurve) { 
+			CubicCurve curve = (CubicCurve) shape;
+			ChangeListener<Number> changeListener = new ChangeListener<Number>() {
+				@Override
+				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {
+					// we add a little bit of offset because the position is the top left x,y. depending on the angle of the curve, this can vary quite a bit over the size of the label
+					Point2D positionOnCurve = EAIDeveloperUtils.getPositionOnCurve(curve, 0.2f);
+					flwSource.setLayoutX(positionOnCurve.getX() - 5);
+					flwSource.setLayoutY(positionOnCurve.getY() - 5);
+					
+					positionOnCurve = EAIDeveloperUtils.getPositionOnCurve(curve, 0.8f);
+					flwTarget.setLayoutX(positionOnCurve.getX() - 5);
+					flwTarget.setLayoutY(positionOnCurve.getY() - 5);
+				}
+			};
+			curve.startXProperty().addListener(changeListener);
+			curve.controlX1Property().addListener(changeListener);
+			curve.controlX2Property().addListener(changeListener);
+			curve.endXProperty().addListener(changeListener);
+			curve.startYProperty().addListener(changeListener);
+			curve.controlY1Property().addListener(changeListener);
+			curve.controlY2Property().addListener(changeListener);
+			curve.endYProperty().addListener(changeListener);
+			// trigger for initial positioning
+			changeListener.changed(null, null, null);
+		}
+		else {
+			flwSource.layoutXProperty().bind(sourceX.add(15));
+			flwSource.layoutYProperty().bind(sourceY.subtract(10));
+			flwTarget.layoutXProperty().bind(targetX.subtract(15));
+			flwTarget.layoutYProperty().bind(targetY.subtract(10));
+		}
+		
+		target.getChildren().addAll(flwSource, flwTarget);
+	}
+	
+	public void calculateLabels() {
+		boolean shouldShow = false;
+		if (!link.isFixedValue()) {
+			shouldShow = isList(link.getFrom().replaceAll("\\[[^\\]]+\\]", ""), (ComplexType) from.getTree().rootProperty().get().itemProperty().get().getType());
+			if (!shouldShow) {
+				shouldShow = isList(link.getTo().replaceAll("\\[[^\\]]+\\]", ""), (ComplexType) to.getTree().rootProperty().get().itemProperty().get().getType());
+			}
+		}
+		flwSource.getStyleClass().removeAll("line-label-many", "line-label-one");
+		flwTarget.getStyleClass().removeAll("line-label-many", "line-label-one");
+		if (shouldShow) {
+			// if either the from or the to is a _theoretical_ list (so the return type is a list of we strip all the indexes)
+			// we want to visualize the 1-* stuff
+			boolean fromList = link.isFixedValue() ? false : isList(link.getFrom(), (ComplexType) from.getTree().rootProperty().get().itemProperty().get().getType());
+			boolean toList = isList(link.getTo(), (ComplexType) to.getTree().rootProperty().get().itemProperty().get().getType());
+			// if either is a list, we want to set both
+			lblSource.setText(fromList ? "*" : "1");
+			lblTarget.setText(toList ? "*" : "1");
+			
+			flwSource.getStyleClass().addAll("line-label-" + (fromList ? "many" : "one"));
+			flwTarget.getStyleClass().addAll("line-label-" + (toList ? "many" : "one"));
+			flwSource.setVisible(true);
+			flwTarget.setVisible(true);
+		}
+		else {
+			lblSource.setText(null);
+			lblTarget.setText(null);
+			flwSource.setVisible(false);
+			flwTarget.setVisible(false);
+		}
+	}
+
+	private boolean isList(String query, ComplexType context) {
+		try {
+			// workaround for invokes, the context is the correct output of the service, but the query has an additional locally scoped unique variable in the pipeline
+			if (query.matches("^result[a-f0-9]{32}/.*")) {
+				query = query.replaceFirst("^result[a-f0-9]{32}/", "");
+			}
+			TypeOperation operation = link.getOperation(query);
+			return operation.getReturnCollectionHandler(context) != null;
+		}
+		catch (Exception e) {
+			return false;
+		}
 	}
 	
 	public void addStyleClass(String...classes) {
@@ -332,10 +456,12 @@ public class Mapping {
 		target.getChildren().remove(shape);
 		target.getChildren().remove(fromCircle);
 		target.getChildren().remove(toCircle);
+		target.getChildren().remove(flwSource);
+		target.getChildren().remove(flwTarget);
 	}
 	
 	public static interface RemoveMapping {
 		public boolean remove(Mapping mapping);
 	}
-	
+
 }

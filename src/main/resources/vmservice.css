@@ -76,6 +76,37 @@
 	-fx-background-radius: 5px;
 }
 
+.vm-line-number {
+	/* #def6ca */
+	-fx-background-color: #ecfae1;
+	-fx-text-fill: #447e14;
+	-fx-border-color: #2f580e;
+	
+/*	-fx-text-fill: #aaa;
+	-fx-background-color: #fff;
+	-fx-font-weight: bold;*/
+	
+	-fx-background-radius: 5px;
+	-fx-border-width: 1px;
+	-fx-border-radius: 5px;
+	-fx-padding: 0px 5px 0px 5px;
+	-fx-font-size: 0.9em;
+}
+
+.highlightedStep .vm-line-number {
+	-fx-background-color: #dbeeff;
+	-fx-text-fill: #285073;
+	-fx-border-color: #7295b4;
+	-fx-border-width: 0px;
+}
+
+.selected .vm-line-number {
+	-fx-border-width: 0px;
+	-fx-background-color: #1f72f4;
+	-fx-text-fill: white;
+	-fx-border-color: #1f72f4;
+}
+
 .vm-comment {
 	-fx-text-fill: #444444;
 	/*-fx-background-color: #F2F2F2;*/
@@ -204,4 +235,31 @@
 	-fx-background-color: #1f72f4;
 	-fx-text-fill: white;
 	-fx-border-color: #1f72f4;
+}
+
+.line-label {
+	-fx-background-color: #f4f4f4;
+	-fx-padding: 0.1em 0.3em;
+	-fx-border-width: 1px;
+	-fx-border-color: #babdb6;
+	-fx-border-radius: 10px;
+	-fx-background-radius: 10px;
+}
+.line-label.line-label-many {
+	-fx-background-color: #DCE1F6;
+	-fx-border-color: #152f98;
+}
+.line-label.line-label-one {
+	-fx-background-color: #DCE1F6;
+	-fx-border-color: #152f98;
+}
+.line-label Label {
+	-fx-font-color: #2e3436;
+	-fx-font-size: 0.7em;
+}
+.line-label.line-label-many Label {
+	-fx-font-color: #152f98;
+}
+.line-label.line-label-one Label {
+	-fx-font-color: #152f98;
 }

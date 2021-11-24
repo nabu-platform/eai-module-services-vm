@@ -1,6 +1,7 @@
 package be.nabu.eai.module.services.vm;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
@@ -20,6 +21,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.util.Callback;
 import be.nabu.eai.developer.MainController;
+import be.nabu.eai.module.services.vm.util.VMServiceUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.jfx.control.tree.TreeCell;
@@ -220,10 +222,23 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 			
 			boolean preamble = false;
 			
+			// normally we always want this! otherwise it's not easy to make it reactive
+			// if you turn it off, we never want it, reactivity doesn't matter
+			if (System.getProperty("blox.lineNumber", "true").equals("true")) {
+				Label label = new Label("" + step.getLineNumber());
+				label.getStyleClass().add("vm-line-number");
+				label.setUserData(step);
+				box.getChildren().addAll(label);
+				preamble = true;
+			}
+			
 			if (step.getFeatures() != null) {
 				Label label = new Label(step.getFeatures());
 				label.getStyleClass().add("vm-feature");
 				box.getChildren().addAll(label);
+				if (preamble) {
+					label.getStyleClass().add("vm-margin-left");
+				}
 				preamble = true;
 			}
 			
@@ -231,44 +246,49 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				Label label = new Label(labelText);
 				label.getStyleClass().add("vm-label");
 				box.getChildren().addAll(label);
-				if (step.getFeatures() != null) {
+				if (preamble) {
 					label.getStyleClass().add("vm-margin-left");
 				}
 			}
 			
 			String comment = step.getComment();
 			if (comment == null && step instanceof Map) {
-				java.util.Map<String, Invoke> invokes = new HashMap<String, Invoke>();
+				List<Invoke> invokes = new ArrayList<Invoke>();
 				for (Step child : ((Map) step).getChildren()) {
 					if (child instanceof Invoke) {
-						String serviceId = ((Invoke) child).getServiceId();
-						invokes.put(serviceId, (Invoke) child);
+						invokes.add((Invoke) child);
 					}
 				}
+				// make sure they are ordered chronologically for the comment
+				invokes.sort(new Comparator<Invoke>() {
+					@Override
+					public int compare(Invoke arg0, Invoke arg1) {
+						return arg0.getInvocationOrder() - arg1.getInvocationOrder();
+					}
+				});
 				if (!invokes.isEmpty()) {
-					List<String> ids = new ArrayList<String>(invokes.keySet());
+					// in case we have the same service multiple times but without templating (so the same comment), we don't want to repeat it
+					List<String> comments = new ArrayList<String>();
 					StringBuilder commentBuilder = new StringBuilder();
-					for (int i = 0; i < ids.size(); i++) {
+					for (Invoke invoke : invokes) {
+						String invokeComment = VMServiceUtils.templateServiceComment(invoke);
+						if (invokeComment == null) {
+							invokeComment = invoke.getServiceId();
+						}
+						if (!comments.contains(invokeComment)) {
+							comments.add(invokeComment);
+						}
+					}
+					for (int i = 0; i < comments.size(); i++) {
 						if (i > 0) {
-							if (i < ids.size() - 1) {
+							if (i < comments.size() - 1) {
 								commentBuilder.append(", ");
 							}
 							else {
 								commentBuilder.append(" and ");
 							}
 						}
-						Entry entry = EAIResourceRepository.getInstance().getEntry(ids.get(i));
-						if (entry != null && entry.getNode().getComment() != null) {
-							if (i > 0) {
-								commentBuilder.append(entry.getNode().getComment().substring(0, 1).toLowerCase() + entry.getNode().getComment().substring(1));
-							}
-							else {
-								commentBuilder.append(entry.getNode().getComment());
-							}
-						}
-						else {
-							commentBuilder.append(ids.get(i));
-						}
+						commentBuilder.append(i > 0 ? comments.get(i).substring(0, 1).toLowerCase() + comments.get(i).substring(1) : comments.get(i));
 					}
 					comment = commentBuilder.toString();
 				}
@@ -287,7 +307,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					hasVariable = true;
 					Label each = new Label("each");
 					each.getStyleClass().add("vm-description");
-					if (step.getLabel() != null || step.getFeatures() != null) {
+					if (step.getLabel() != null || preamble) {
 						each.getStyleClass().add("vm-margin-left");
 					}
 					Label item = new Label(((For) step).getVariable());
@@ -332,7 +352,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 					message.getStyleClass().addAll("vm-value", "vm-throw-message");
 					box.getChildren().addAll(message);
 					
-					if (((Throw) step).getCode() == null && (step.getLabel() != null || step.getFeatures() != null)) {
+					if (((Throw) step).getCode() == null && (step.getLabel() != null || preamble)) {
 						message.getStyleClass().add("vm-margin-left");
 					}
 				}
@@ -407,7 +427,7 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 			if (comment != null) {
 				Label label = new Label(comment);
 				label.getStyleClass().add("vm-comment");
-				if (labelText != null || step.getFeatures() != null) {
+				if (labelText != null || preamble) {
 					label.getStyleClass().add("vm-margin-left");
 				}
 				box.getChildren().addAll(label);
