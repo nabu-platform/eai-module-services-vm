@@ -768,6 +768,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					((StepTreeItem) target.getItem()).refresh();
 					((StepTreeItem) dragged.getParent().getItem()).refresh();
 				}
+				renumber(pane);
 				MainController.getInstance().setChanged();
 			}
 		});
@@ -992,6 +993,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						MainController.getInstance().open(createNode.getId());
 						// refocus on refactored service
 						MainController.getInstance().activate(entry.getId());
+						renumber(pane);
 					}
 					catch (Exception e) {
 						MainController.getInstance().notify(e);
@@ -1245,7 +1247,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					if (content instanceof String) {
 						Artifact resolve = MainController.getInstance().getRepository().resolve((String) content);
 						if (resolve instanceof DefinedService) {
-							addServiceInvoke((String) content);
+							addServiceInvoke(pane, (String) content);
 						}
 					}
 				}
@@ -1307,6 +1309,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								else {
 									serviceTree.getTreeCell(serviceTree.rootProperty().get()).refresh();
 								}
+								renumber(pane);
 								MainController.getInstance().setChanged();
 								MainController.getInstance().closeDragSource();
 								event.setDropCompleted(true);
@@ -1334,7 +1337,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return serviceController;
 	}
 
-	public void addServiceInvoke(String serviceId) {
+	public void addServiceInvoke(Node pane, String serviceId) {
 		if (serviceTree.getSelectionModel().getSelectedItem() != null) {
 			Step step = serviceTree.getSelectionModel().getSelectedItem().getItem().itemProperty().get();
 			if (step instanceof Map) {
@@ -1352,6 +1355,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				drawInvoke(MainController.getInstance(), invoke, invokeWrappers, serviceController, service, serviceTree, MainController.getInstance().hasLock(getId(service)), MainController.getInstance().getRepository(), getId(service));
 				serviceTree.getSelectionModel().getSelectedItem().refresh();
 				MainController.getInstance().setChanged();
+				renumber(pane);
 			}
 		}
 	}
@@ -1418,7 +1422,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 				highlight(child, text);
 			}
 		}
-		// children but none of them are shown in the tree
+		// children but none of them are shown in the tree (e.g. a match in a link inside a map step)
 		else if (text != null && !text.trim().isEmpty() && item.itemProperty().get() instanceof StepGroup && matches(item.itemProperty().get(), text, true)) {
 			if (!cell.getCellValue().getNode().getStyleClass().contains("highlightedStep")) {
 				cell.getCellValue().getNode().getStyleClass().add("highlightedStep");
@@ -1427,7 +1431,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		}
 	}
 	
-	private static boolean matches(Step step, String text, boolean recursive) {
+	public static boolean matches(Step step, String text, boolean recursive) {
 		String regex = "(?i).*" + text + ".*";
 		if (step.getId() != null && step.getId().equals(text)) {
 			return true;

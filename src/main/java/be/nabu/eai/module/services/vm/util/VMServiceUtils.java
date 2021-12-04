@@ -63,6 +63,17 @@ public class VMServiceUtils {
 				value = value.substring(1, value.length() - 1);
 				String[] split = value.split("[\\s]*\\|[\\s]*");
 				String templateValue = split.length == 1 ? split[0] : split[1];
+				
+				// the field we want to match
+				// {name | a component} -> here the field is "name", the default template value is "a component"
+				// {name ? component $name | a component} -> here we want to apply a template if a particular field is present
+				int indexOf = split[0].indexOf('?');
+				String fieldToMatch = indexOf > 0 ? split[0].substring(0, indexOf) : split[0];
+				String fieldTemplate = indexOf > 0 ? split[0].substring(indexOf + 1) : "$" + fieldToMatch;
+				fieldToMatch = fieldToMatch.trim();
+				fieldTemplate = fieldTemplate.trim();
+				templateValue = templateValue.trim();
+				
 				for (Step child : invoke.getChildren()) {
 					if (child instanceof Link) {
 						// remove queries, they don't count
@@ -70,7 +81,7 @@ public class VMServiceUtils {
 						String to = ((Link) child).getTo().replaceAll("\\[[^\\]]+\\]", "");
 						String from = ((Link) child).getFrom();
 						// if we found what we are mapping
-						if (to.equals(split[0])) {
+						if (to.equals(fieldToMatch)) {
 							// if it is a fixed value, we just add that
 							if (((Link) child).isFixedValue()) {
 								// we don't want very long fixed values in here, nor multilines
@@ -86,6 +97,7 @@ public class VMServiceUtils {
 								// also remove queries
 								templateValue = from.replaceAll("\\[[^\\]]+\\]", "").replaceAll("^.*/([^/]+)$", "$1").replaceAll("([A-Z]+)", " $1").toLowerCase();
 							}
+							templateValue = fieldTemplate.replace("$" + fieldToMatch, templateValue);
 						}
 					}
 				}

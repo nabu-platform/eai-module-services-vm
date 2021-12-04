@@ -78,16 +78,27 @@
 
 .vm-line-number {
 	/* #def6ca */
+	
+	/*
+	green
 	-fx-background-color: #ecfae1;
 	-fx-text-fill: #447e14;
 	-fx-border-color: #2f580e;
+	*/
 	
-/*	-fx-text-fill: #aaa;
+	-fx-text-fill: #aaa;
+	-fx-border-color: #ccc;
 	-fx-background-color: #fff;
-	-fx-font-weight: bold;*/
+	
+/*
+	grey
+	-fx-text-fill: #aaa;
+	-fx-background-color: #fff;
+	-fx-font-weight: bold;
+	*/
 	
 	-fx-background-radius: 5px;
-	-fx-border-width: 1px;
+	-fx-border-width: 0px;
 	-fx-border-radius: 5px;
 	-fx-padding: 0px 5px 0px 5px;
 	-fx-font-size: 0.9em;
