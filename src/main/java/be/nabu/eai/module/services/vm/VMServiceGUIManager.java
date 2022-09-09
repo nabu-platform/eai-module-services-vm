@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.api.NamingConvention;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.api.ArtifactGUIInstance;
 import be.nabu.eai.developer.api.ConfigurableGUIManager;
@@ -367,7 +368,16 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			public void handle(ActionEvent arg0) {
 				try {
 					String name = updater.getValue("Name");
+					
+					String originalName = name;
+					if (controller.usePrettyNamesInRepositoryProperty().get()) {
+						name = NamingConvention.LOWER_CAMEL_CASE.apply(NamingConvention.UNDERSCORE.apply(name));
+					}
 					RepositoryEntry entry = ((RepositoryEntry) target.itemProperty().get()).createNode(name, getArtifactManager(), true);
+					if (!originalName.equals(name)) {
+						entry.getNode().setName(originalName);
+						entry.saveNode();
+					}
 					VMService service = newVMService(entry.getRepository(), entry.getId(), updater.getValues());
 					getArtifactManager().save(entry, service);
 					controller.getRepositoryBrowser().refresh();
@@ -1361,7 +1371,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	}
 	
 	void validate(final VMService service) {
-		List<Validation<?>> validate = service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
+//		List<Validation<?>> validate = service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
+		List<? extends Validation<?>> validate = new VMServiceManager().validate(service);
 		validations.clear();
 		if (validate != null && validate.size() > 0) {
 			validations.addAll(validate);

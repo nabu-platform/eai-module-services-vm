@@ -95,7 +95,8 @@ public class VMServiceGUIInstance implements RefresheableArtifactGUIInstance, Va
 
 	@Override
 	public List<? extends Validation<?>> validate() {
-		return service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
+		return new VMServiceManager().validate(service);
+//		return service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
 	}
 
 	@Override

@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,6 +21,8 @@ import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.BrokenReferenceArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
+import be.nabu.eai.repository.api.Node;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ValidatableArtifactManager;
 import be.nabu.eai.repository.api.VariableRefactorArtifactManager;
@@ -47,6 +50,7 @@ import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.services.vm.step.For;
 import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Link;
+import be.nabu.libs.services.vm.step.Map;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.step.Switch;
 import be.nabu.libs.services.vm.step.Throw;
@@ -62,6 +66,8 @@ import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.validator.api.Validation;
+import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -613,7 +619,26 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 
 	@Override
 	public List<? extends Validation<?>> validate(VMService service) {
-		return service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());	
+		List<Validation<?>> messages = service.getRoot().validate(EAIResourceRepository.getInstance().getServiceContext());
+		repositoryAwareValidate(EAIResourceRepository.getInstance(), service.getRoot(), messages);
+		return messages;
+	}
+	
+	private void repositoryAwareValidate(Repository repository, StepGroup step, List<Validation<?>> messages) {
+		if (step.getChildren() != null) {
+			for (Step child : step.getChildren()) {
+				if (step instanceof Map && child instanceof Invoke) {
+					String serviceId = ((Invoke) child).getServiceId();
+					Node node = repository.getNode(serviceId);
+					if (node != null && node.getDeprecated() != null && node.getDeprecated().before(new Date())) {
+						messages.add(((Map) step).addContext(new ValidationMessage(Severity.WARNING, "Service '" + serviceId + "' has been deprecated since: " + node.getDeprecated())));
+					}
+				}
+				else if (child instanceof StepGroup) {
+					repositoryAwareValidate(repository, (StepGroup) child, messages);
+				}
+			}
+		}
 	}
 }
 

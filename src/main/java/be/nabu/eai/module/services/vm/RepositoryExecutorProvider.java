@@ -62,6 +62,7 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 					@Override
 					public Future<ServiceResult> run(Service service, ExecutionContext context, ComplexContent input, ServiceRunnableObserver...observers) {
 						try {
+//							System.out.println("submitting " + ((DefinedService) service).getId() + " with target: " + target);
 							((ClusteredServiceRunner) repository.getServiceRunner()).runAnywhere(service, context, input, target.endsWith(":$any") ? target.substring(0, target.length() - ":$any".length()) : null);
 						}
 						catch (Exception e) {
