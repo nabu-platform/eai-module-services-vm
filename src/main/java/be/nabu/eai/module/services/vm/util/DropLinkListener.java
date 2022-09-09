@@ -134,8 +134,10 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 		else {
 			setDefaultIndexes(from, (TreeItem<Element<?>>) dragged.getTree().rootProperty().get(), !toIsList);
 		}
-		setDefaultIndexes(to, target.getTree().rootProperty().get(), !fromIsList);
-		final Link link = new Link(from.toString(), to.toString());
+		if (to != null) {
+			setDefaultIndexes(to, target.getTree().rootProperty().get(), !fromIsList);
+		}
+		final Link link = new Link(from.toString(), to == null ? null : to.toString());
 		// by reusing that bit of code, we finally get F8 support from the getgo instead of after refreshing the map step
 		Mapping mapping = VMServiceGUIManager.buildMapping(link, serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
 		link.setMask(mask);

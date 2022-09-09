@@ -192,7 +192,8 @@ public class Mapping {
 	
 	public void calculateLabels() {
 		boolean shouldShow = false;
-		if (!link.isFixedValue()) {
+		// the to can be null if we map to the input of an invoke service
+		if (!link.isFixedValue() && link.getTo() != null) {
 			shouldShow = isList(link.getFrom().replaceAll("\\[[^\\]]+\\]", ""), (ComplexType) from.getTree().rootProperty().get().itemProperty().get().getType());
 			if (!shouldShow) {
 				shouldShow = isList(link.getTo().replaceAll("\\[[^\\]]+\\]", ""), (ComplexType) to.getTree().rootProperty().get().itemProperty().get().getType());

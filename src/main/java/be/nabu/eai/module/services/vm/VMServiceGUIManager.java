@@ -1940,21 +1940,28 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			fromElement = find(left.rootProperty().get(), from);
 			fromTree = left;
 		}
-		ParsedPath to = new ParsedPath(link.getTo());
 		TreeItem<Element<?>> toElement;
 		Tree<Element<?>> toTree;
-		if (invokeWrappers.containsKey(to.getName())) {
-			toElement = find(invokeWrappers.get(to.getName()).getInput().rootProperty().get(), to);
-			toTree = invokeWrappers.get(to.getName()).getInput();
-		}
-		// otherwise, it's from the pipeline
-		else {
-			toElement = find(right.rootProperty().get(), to);
+		ParsedPath to = link.getTo() == null ? null : new ParsedPath(link.getTo());
+		// this happens when you want to map to the input of a service
+		if (link.getTo() == null) {
+			toElement = right.rootProperty().get();
 			toTree = right;
+		}
+		else {
+			if (invokeWrappers.containsKey(to.getName())) {
+				toElement = find(invokeWrappers.get(to.getName()).getInput().rootProperty().get(), to);
+				toTree = invokeWrappers.get(to.getName()).getInput();
+			}
+			// otherwise, it's from the pipeline
+			else {
+				toElement = find(right.rootProperty().get(), to);
+				toTree = right;
+			}
 		}
 		
 		if (fromElement == null || toElement == null) {
-			logger.error("Can not create link from " + from + " (" + fromElement + ") to " + to + " (" + toElement + ")");
+			logger.error("Can not create link from " + from + " (" + fromElement + ") to " + link.getTo() + " (" + toElement + ")");
 			return null;
 		}
 		else {
@@ -1964,7 +1971,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			if (link.isMask()) {
 				mapping.addStyleClass("maskLine");
 			}
-			if (hasIndexQuery(from) || hasIndexQuery(to)) {
+			if (hasIndexQuery(from) || (to != null && hasIndexQuery(to))) {
 				mapping.addStyleClass("indexQueryLine");
 			}
 			else {
@@ -1994,11 +2001,14 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					}
 					
 					boolean toIsList = to.getItem().itemProperty().get().getType().isList(to.getItem().itemProperty().get().getProperties());
-					ParsedPath path = new ParsedPath(link.getTo());
-					DropLinkListener.setDefaultIndexes(path, to.getTree().rootProperty().get(), toIsList);
-					if (!path.toString().equals(link.getTo())) {
-						link.setTo(path.toString());
-						MainController.getInstance().setChanged();
+					// can be null when mapping to the input of an invoke
+					if (link.getTo() != null) {
+						ParsedPath path = new ParsedPath(link.getTo());
+						DropLinkListener.setDefaultIndexes(path, to.getTree().rootProperty().get(), toIsList);
+						if (!path.toString().equals(link.getTo())) {
+							link.setTo(path.toString());
+							MainController.getInstance().setChanged();
+						}
 					}
 					mapping.calculateLabels();
 				}

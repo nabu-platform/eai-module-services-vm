@@ -44,8 +44,12 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 				properties.add(new LinkIndexProperty(indexed, true));
 			}
 		}
-		for (String indexed : explode(null, new ParsedPath(link.getTo())).keySet()) {
-			properties.add(new LinkIndexProperty(indexed, false));
+		// the link get to can be null in case we map to the input of a service invoke
+		// in that case we don't have indexes
+		if (link.getTo() != null) {
+			for (String indexed : explode(null, new ParsedPath(link.getTo())).keySet()) {
+				properties.add(new LinkIndexProperty(indexed, false));
+			}
 		}
 		properties.add(OPTIONAL_PROPERTY);
 		return properties;
