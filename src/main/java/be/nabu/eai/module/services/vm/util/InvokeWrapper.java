@@ -269,10 +269,10 @@ public class InvokeWrapper {
 			ImageView graphic = controller.getGUIManager(entry.getNode().getArtifactClass()).getGraphic();
 			new CustomTooltip("Invoke order: " + invoke.getInvocationOrder()).install(graphic);
 			name.getChildren().add(MainController.wrapInFixed(graphic, 25, 25));
-			String comment = entry.getNode().getComment();
+			String comment = VMServiceUtils.templateServiceComment(invoke);
 			if (comment != null) {
 //				nameLabel.setText(comment);
-				nameLabel.setText(VMServiceUtils.templateServiceComment(invoke));
+				nameLabel.setText(comment);
 				nameLabel.setWrapText(true);
 				subscript = new Label(invoke.getServiceId());
 				subscript.getStyleClass().add("invokeSubscript");
@@ -285,10 +285,14 @@ public class InvokeWrapper {
 //		name.getChildren().addAll(invokeLevelLabel, mainNameBox);
 		name.getChildren().add(mainNameBox);
 		
+		String description = service != null ? service.getDescription() : null;
+		if ((description == null || description.trim().isEmpty()) && entry != null) {
+			description = entry.getNode().getDescription();
+		}
 		// add more info about the service if available
-		if (service != null && service.getDescription() != null) {
+		if (description != null && !description.trim().isEmpty()) {
 			Node loadGraphic = MainController.getInfoIcon();
-			CustomTooltip customTooltip = new CustomTooltip(service.getDescription());
+			CustomTooltip customTooltip = new CustomTooltip(description);
 			customTooltip.install(loadGraphic);
 			customTooltip.setMaxWidth(400d);
 			nameLabel.setGraphic(loadGraphic);

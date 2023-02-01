@@ -409,7 +409,8 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				}
 				Label code = new Label("[" + ((Break) step).getCount() + "]");
 				code.getStyleClass().addAll("vm-value", "vm-throw-code");
-				Label outOf = new Label("out of");
+				boolean continueExecution  = ((Break) step).getContinueExecution() != null && ((Break) step).getContinueExecution();
+				Label outOf = new Label(continueExecution ? "continue with" : "out of");
 				outOf.getStyleClass().add("vm-description");
 				box.getChildren().addAll(code, outOf);
 					

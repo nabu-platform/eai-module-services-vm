@@ -11,7 +11,6 @@ import be.nabu.eai.developer.MainController.PropertyUpdaterWithSource;
 import be.nabu.eai.developer.util.ElementTreeItem;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.jfx.control.tree.TreeCell;
-import be.nabu.libs.property.api.ComparableProperty;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.vm.step.Break;
@@ -25,7 +24,6 @@ import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.properties.BaseProperty;
 import be.nabu.libs.types.properties.CommentProperty;
-import be.nabu.libs.types.properties.SimpleProperty;
 import be.nabu.libs.validator.RangeValidator;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.Validator;
@@ -58,6 +56,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		properties.add(new DescriptionProperty());
 		if (step instanceof Break) {
 			properties.add(new BreakCountProperty());
+			properties.add(new ContinueExecutionProperty());
 		}
 		else if (step instanceof Catch) {
 			properties.add(new VariableProperty());
@@ -80,6 +79,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new MessageProperty());
 			properties.add(new AliasProperty());
 			properties.add(new RealmProperty());
+			properties.add(new AuthenticationIdProperty());
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
@@ -99,6 +99,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		values.add(new ValueImpl<String>(new DescriptionProperty(), step.getDescription()));
 		if (step instanceof Break) {
 			values.add(new ValueImpl<Integer>(new BreakCountProperty(), ((Break) step).getCount()));
+			values.add(new ValueImpl<Boolean>(new ContinueExecutionProperty(), ((Break) step).getContinueExecution()));
 		}
 		else if (step instanceof Catch) {
 			values.add(new ValueImpl<String>(new VariableProperty(), ((Catch) step).getVariable()));
@@ -142,6 +143,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			values.add(new ValueImpl<String>(new MessageProperty(), ((Throw) step).getMessage()));
 			values.add(new ValueImpl<String>(new AliasProperty(), ((Throw) step).getAlias()));
 			values.add(new ValueImpl<String>(new RealmProperty(), ((Throw) step).getRealm()));
+			values.add(new ValueImpl<String>(new AuthenticationIdProperty(), ((Throw) step).getAuthenticationId()));
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
@@ -179,7 +181,12 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			step.setName((String) value);
 		}
 		else if (step instanceof Break) {
-			((Break) step).setCount(value == null ? 1 : (Integer) value);
+			if (property instanceof BreakCountProperty) {
+				((Break) step).setCount(value == null ? 1 : (Integer) value);
+			}
+			else if (property instanceof ContinueExecutionProperty) {
+				((Break) step).setContinueExecution(value instanceof Boolean && (Boolean) value);
+			}
 		}
 		else if (step instanceof Catch) {
 			if (property instanceof VariableProperty) {
@@ -265,6 +272,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			else if (property instanceof RealmProperty) {
 				((Throw) step).setRealm((String) value);
+			}
+			else if (property instanceof AuthenticationIdProperty) {
+				((Throw) step).setAuthenticationId((String) value);
 			}
 		}
 		else if (step instanceof Sequence) {
@@ -511,6 +521,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		}
 	}
 	
+	public static class AuthenticationIdProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "authenticationId";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
 	public static class RealmProperty extends BaseProperty<String> {
 		@Override
 		public String getName() {
@@ -568,6 +593,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public Class<String> getValueClass() {
 			return String.class;
+		}
+	}
+	
+	public static class ContinueExecutionProperty extends BaseProperty<Boolean> {
+		@Override
+		public String getName() {
+			return "continueExecution";
+		}
+		@Override
+		public Validator<Boolean> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<Boolean> getValueClass() {
+			return Boolean.class;
 		}
 	}
 

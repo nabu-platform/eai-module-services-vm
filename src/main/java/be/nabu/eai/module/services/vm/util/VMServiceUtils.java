@@ -49,61 +49,68 @@ public class VMServiceUtils {
 	
 	public static String templateServiceComment(Invoke invoke) {
 		Entry entry = EAIResourceRepository.getInstance().getEntry(invoke.getServiceId());
-		if (entry != null && entry.isNode() && entry.getNode().getComment() != null) {
+		if (entry != null && entry.isNode()) {
+			// a comment is meant for developers
 			String comment = entry.getNode().getComment();
-			Pattern pattern = Pattern.compile("\\{[^}]+\\}");
-			Matcher matcher = pattern.matcher(comment);
-			while (matcher.find()) {
-				String match = matcher.group();
-				// the "default" value is added after a pipe
-				// {<nameofinput>|default}
-				// if there is no default, the name of the input is taken
-				String value = match.trim();
-				// remove the curly braces
-				value = value.substring(1, value.length() - 1);
-				String[] split = value.split("[\\s]*\\|[\\s]*");
-				String templateValue = split.length == 1 ? split[0] : split[1];
-				
-				// the field we want to match
-				// {name | a component} -> here the field is "name", the default template value is "a component"
-				// {name ? component $name | a component} -> here we want to apply a template if a particular field is present
-				int indexOf = split[0].indexOf('?');
-				String fieldToMatch = indexOf > 0 ? split[0].substring(0, indexOf) : split[0];
-				String fieldTemplate = indexOf > 0 ? split[0].substring(indexOf + 1) : "$" + fieldToMatch;
-				fieldToMatch = fieldToMatch.trim();
-				fieldTemplate = fieldTemplate.trim();
-				templateValue = templateValue.trim();
-				
-				for (Step child : invoke.getChildren()) {
-					if (child instanceof Link) {
-						// remove queries, they don't count
-						// the "input" is not included in the to
-						String to = ((Link) child).getTo().replaceAll("\\[[^\\]]+\\]", "");
-						String from = ((Link) child).getFrom();
-						// if we found what we are mapping
-						if (to.equals(fieldToMatch)) {
-							// if it is a fixed value, we just add that
-							if (((Link) child).isFixedValue()) {
-								// we don't want very long fixed values in here, nor multilines
-								from = from.replace("\\n", " ");
-								if (from.length() > 32) {
-									from = from.substring(0, 32) + "...";
+			// a summary is meant for business users but still relevant!
+			if (comment == null || comment.trim().isEmpty()) {
+				comment = entry.getNode().getSummary();
+			}
+			if (comment != null && !comment.trim().isEmpty()) {
+				Pattern pattern = Pattern.compile("\\{[^}]+\\}");
+				Matcher matcher = pattern.matcher(comment);
+				while (matcher.find()) {
+					String match = matcher.group();
+					// the "default" value is added after a pipe
+					// {<nameofinput>|default}
+					// if there is no default, the name of the input is taken
+					String value = match.trim();
+					// remove the curly braces
+					value = value.substring(1, value.length() - 1);
+					String[] split = value.split("[\\s]*\\|[\\s]*");
+					String templateValue = split.length == 1 ? split[0] : split[1];
+					
+					// the field we want to match
+					// {name | a component} -> here the field is "name", the default template value is "a component"
+					// {name ? component $name | a component} -> here we want to apply a template if a particular field is present
+					int indexOf = split[0].indexOf('?');
+					String fieldToMatch = indexOf > 0 ? split[0].substring(0, indexOf) : split[0];
+					String fieldTemplate = indexOf > 0 ? split[0].substring(indexOf + 1) : "$" + fieldToMatch;
+					fieldToMatch = fieldToMatch.trim();
+					fieldTemplate = fieldTemplate.trim();
+					templateValue = templateValue.trim();
+					
+					for (Step child : invoke.getChildren()) {
+						if (child instanceof Link) {
+							// remove queries, they don't count
+							// the "input" is not included in the to
+							String to = ((Link) child).getTo().replaceAll("\\[[^\\]]+\\]", "");
+							String from = ((Link) child).getFrom();
+							// if we found what we are mapping
+							if (to.equals(fieldToMatch)) {
+								// if it is a fixed value, we just add that
+								if (((Link) child).isFixedValue()) {
+									// we don't want very long fixed values in here, nor multilines
+									from = from.replace("\\n", " ");
+									if (from.length() > 32) {
+										from = from.substring(0, 32) + "...";
+									}
+									templateValue = "\"" + from + "\"";
 								}
-								templateValue = "\"" + from + "\"";
+								else {
+									// we want the last word, this is the name of the ultimate variable
+									// we also decamelify the thing
+									// also remove queries
+									templateValue = from.replaceAll("\\[[^\\]]+\\]", "").replaceAll("^.*/([^/]+)$", "$1").replaceAll("([A-Z]+)", " $1").toLowerCase();
+								}
+								templateValue = fieldTemplate.replace("$" + fieldToMatch, templateValue);
 							}
-							else {
-								// we want the last word, this is the name of the ultimate variable
-								// we also decamelify the thing
-								// also remove queries
-								templateValue = from.replaceAll("\\[[^\\]]+\\]", "").replaceAll("^.*/([^/]+)$", "$1").replaceAll("([A-Z]+)", " $1").toLowerCase();
-							}
-							templateValue = fieldTemplate.replace("$" + fieldToMatch, templateValue);
 						}
 					}
+					comment = comment.replace(match, templateValue);
 				}
-				comment = comment.replace(match, templateValue);
+				return comment;
 			}
-			return comment;
 		}
 		return null;
 	}

@@ -1868,6 +1868,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			inputTree.removeRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 			outputTree.removeRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
 		}
+		
 		Tree<Element<?>> leftTree = new Tree<Element<?>>(new ElementMarshallable());
 		EAIDeveloperUtils.addElementExpansionHandler(leftTree);
 		leftTree.rootProperty().set(new ElementTreeItem(new RootElementWithPush(
@@ -1889,13 +1890,18 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 			}
 		});
 		
-		// add first to get parents right
-		serviceController.getPanLeft().getChildren().add(leftTree);
+		final VBox left = new VBox();
+		left.getStyleClass().add("small");
+		left.getChildren().add(StructureGUIManager.createSearchable(leftTree));
+		left.getChildren().add(leftTree);
 		
-		AnchorPane.setLeftAnchor(leftTree, 0d);
-		AnchorPane.setRightAnchor(leftTree, 0d);
-		AnchorPane.setTopAnchor(leftTree, 0d);
-		AnchorPane.setBottomAnchor(leftTree, 0d);
+		// add first to get parents right
+		serviceController.getPanLeft().getChildren().add(left);
+		
+		AnchorPane.setLeftAnchor(left, 0d);
+		AnchorPane.setRightAnchor(left, 0d);
+		AnchorPane.setTopAnchor(left, 0d);
+		AnchorPane.setBottomAnchor(left, 0d);
 		
 		TreeDragDrop.makeDraggable(leftTree, new ElementLineConnectListener(serviceController.getPanMap()));
 		inputTree.addRefreshListener(leftTree.getTreeCell(leftTree.rootProperty().get()));
@@ -2118,10 +2124,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	}
 	
 	public static String getIcon(Class<? extends Step> clazz) {
-		return "step/" + clazz.getSimpleName().toLowerCase() + ".png";
+		return getIcon(clazz, false);
+	}
+	public static String getIcon(Class<? extends Step> clazz, boolean hasDescription) {
+		return "step/" + clazz.getSimpleName().toLowerCase() + (hasDescription ? "-d" : "") + ".png";
 	}
 	public static String getIcon(Step step) {
-		return getIcon(step.getClass());
+		return getIcon(step.getClass(), step.getDescription() != null && !step.getDescription().trim().isEmpty());
 	}
 
 	@Override
