@@ -1784,7 +1784,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						if (isInterfaceEditable()) {
 							((ElementImpl<?>) item.itemProperty().get()).getBlockedProperties().addAll(item.itemProperty().get().getSupportedProperties());
 							for (TreeItem<Element<?>> child : item.getChildren()) {
-								if (TypeUtils.getLocalChild((ComplexType) item.itemProperty().get().getType(), child.getName()) != null) {
+								if (TypeUtils.isLocalChild((ComplexType) item.itemProperty().get().getType(), child.getName())) {
 									((ElementTreeItem) child).setEditable(true);
 									((ElementTreeItem) child).setAllowNonLocalModification(false);
 								}
