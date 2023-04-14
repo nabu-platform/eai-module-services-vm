@@ -56,6 +56,7 @@ import be.nabu.eai.module.services.vm.util.StepPropertyProvider;
 import be.nabu.eai.module.services.vm.util.StepTreeItem;
 import be.nabu.eai.module.services.vm.util.VMServiceController;
 import be.nabu.eai.module.services.vm.util.VMServiceUtils;
+import be.nabu.eai.module.services.vm.util.Mapping.RemoveMapping;
 import be.nabu.eai.module.types.structure.StructureGUIManager;
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
@@ -1973,7 +1974,15 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		else {
 //			Mapping mapping = new Mapping(target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement));
 			Mapping mapping = buildMapping(link, target, fromTree.getTreeCell(fromElement), toTree.getTreeCell(toElement), lock);
-			mapping.setRemoveMapping(new RemoveLinkListener(link));
+			// @2023-04-14: the remove link does NOT remove it from the mappings which prevents the line from being redrawn if it is saved (only persisted mappings follow this path, other mappings are drawn by the droplinklistener)
+//			mapping.setRemoveMapping(new RemoveLinkListener(link));
+			mapping.setRemoveMapping(new RemoveMapping() {
+				@Override
+				public boolean remove(Mapping mapping) {
+					mappings.remove(link);
+					return new RemoveLinkListener(link).remove(mapping);
+				}
+			});
 			if (link.isMask()) {
 				mapping.addStyleClass("maskLine");
 			}
