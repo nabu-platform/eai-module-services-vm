@@ -85,6 +85,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new TransactionVariableProperty());
 			properties.add(new ScopeDefaultTransactionProperty());
 			properties.add(new SuppressExceptionProperty());
+			properties.add(new SynchronizedProperty());
 		}
 		return properties;
 	}
@@ -149,6 +150,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
 			values.add(new ValueImpl<Boolean>(new ScopeDefaultTransactionProperty(), ((Sequence) step).getScopeDefaultTransaction()));
 			values.add(new ValueImpl<Boolean>(new SuppressExceptionProperty(), ((Sequence) step).getSuppressException()));
+			values.add(new ValueImpl<Boolean>(new SynchronizedProperty(), ((Sequence) step).getSynchronized()));
 		}
 		return values.toArray(new Value[0]);
 	}
@@ -296,6 +298,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			else if (property instanceof SuppressExceptionProperty) {
 				((Sequence) step).setSuppressException((Boolean) value);
 			}
+			else if (property instanceof SynchronizedProperty) {
+				((Sequence) step).setSynchronized((Boolean) value);
+			}
 		}
 		cell.refresh();
 		MainController.getInstance().setChanged();
@@ -390,6 +395,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public String getName() {
 			return "scopeDefaultTransaction";
+		}
+		@Override
+		public Validator<Boolean> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<Boolean> getValueClass() {
+			return Boolean.class;
+		}
+	}
+	
+	public static class SynchronizedProperty extends BaseProperty<Boolean> {
+		@Override
+		public String getName() {
+			return "synchronized";
 		}
 		@Override
 		public Validator<Boolean> getValidator() {
