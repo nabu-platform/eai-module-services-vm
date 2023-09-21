@@ -1561,7 +1561,13 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 	private static void resizeIfTooBig(InvokeWrapper wrapper, Pane pane, VMServiceController controller) {
 		if (wrapper.getInput() != null && wrapper.getOutput() != null) {
 			DoubleAmountListener heightListener = new DoubleAmountListener(wrapper.getInput().heightProperty(), wrapper.getOutput().heightProperty());
+			// width is not input OR output but together
 			DoubleAmountListener widthListener = new DoubleAmountListener(wrapper.getInput().widthProperty(), wrapper.getOutput().widthProperty());
+			// the problem is, width of input and output combined is still not quite as wide as the actual invoke wrapper
+			// however, the component.widthproperty does not seem up to date
+			// need to review this later!
+			// also, this seems to massively mess up the drawing of lines etc, not entirely clear as to why...
+//			DoubleAmountListener widthListener = new DoubleAmountListener(wrapper.getInput().widthProperty().add(wrapper.getOutput().widthProperty()), wrapper.getComponent().widthProperty());
 			pane.layoutYProperty().add(heightListener.maxDoubleProperty()).addListener(new ChangeListener<Number>() {
 				@Override
 				public void changed(ObservableValue<? extends Number> arg0, Number arg1, Number arg2) {

@@ -80,6 +80,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new AliasProperty());
 			properties.add(new RealmProperty());
 			properties.add(new AuthenticationIdProperty());
+			properties.add(new WhitelistProperty());
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
@@ -145,6 +146,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			values.add(new ValueImpl<String>(new AliasProperty(), ((Throw) step).getAlias()));
 			values.add(new ValueImpl<String>(new RealmProperty(), ((Throw) step).getRealm()));
 			values.add(new ValueImpl<String>(new AuthenticationIdProperty(), ((Throw) step).getAuthenticationId()));
+			values.add(new ValueImpl<Boolean>(new WhitelistProperty(), ((Throw) step).isWhitelist()));
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
@@ -277,6 +279,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			else if (property instanceof AuthenticationIdProperty) {
 				((Throw) step).setAuthenticationId((String) value);
+			}
+			else if (property instanceof WhitelistProperty) {
+				((Throw) step).setWhitelist((Boolean) value);
 			}
 		}
 		else if (step instanceof Sequence) {
@@ -620,6 +625,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public String getName() {
 			return "continueExecution";
+		}
+		@Override
+		public Validator<Boolean> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<Boolean> getValueClass() {
+			return Boolean.class;
+		}
+	}
+	
+	public static class WhitelistProperty extends BaseProperty<Boolean> {
+		@Override
+		public String getName() {
+			return "whitelist";
 		}
 		@Override
 		public Validator<Boolean> getValidator() {
