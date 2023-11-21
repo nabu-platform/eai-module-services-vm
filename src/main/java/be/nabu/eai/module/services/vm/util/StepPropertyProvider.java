@@ -81,6 +81,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new RealmProperty());
 			properties.add(new AuthenticationIdProperty());
 			properties.add(new WhitelistProperty());
+			properties.add(new DataProperty());
 		}
 		else if (step instanceof Sequence) {
 			properties.add(new TransactionVariableProperty());
@@ -147,6 +148,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			values.add(new ValueImpl<String>(new RealmProperty(), ((Throw) step).getRealm()));
 			values.add(new ValueImpl<String>(new AuthenticationIdProperty(), ((Throw) step).getAuthenticationId()));
 			values.add(new ValueImpl<Boolean>(new WhitelistProperty(), ((Throw) step).isWhitelist()));
+			values.add(new ValueImpl<String>(new DataProperty(), ((Throw) step).getData()));
 		}
 		else if (step instanceof Sequence) {
 			values.add(new ValueImpl<String>(new TransactionVariableProperty(), ((Sequence) step).getTransactionVariable()));
@@ -282,6 +284,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			else if (property instanceof WhitelistProperty) {
 				((Throw) step).setWhitelist((Boolean) value);
+			}
+			else if (property instanceof DataProperty) {
+				((Throw) step).setData((String) value);
 			}
 		}
 		else if (step instanceof Sequence) {
@@ -490,6 +495,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public String getName() {
 			return "message";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class DataProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "data";
 		}
 		@Override
 		public Validator<String> getValidator() {
