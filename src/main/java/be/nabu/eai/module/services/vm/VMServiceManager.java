@@ -309,7 +309,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		// because of reloads etc, the object instances might not be the same although they are in fact from the same entry
 		// do an id check to verify whether they are not actually the same after all
 		if (currentType.equals(impactedArtifact) || !TypeUtils.getUpcastPath(currentType, impactedArtifact).isEmpty()
-				|| (currentType instanceof DefinedType && impactedArtifact instanceof DefinedType && ((DefinedType) currentType).getId().equals(((DefinedType) impactedArtifact).getId()))) {
+				|| (currentType instanceof DefinedType && impactedArtifact instanceof DefinedType && ((DefinedType) currentType).getId() != null && ((DefinedType) currentType).getId().equals(((DefinedType) impactedArtifact).getId()))) {
 			String relativeOldPath = currentPath == null ? oldPath : currentPath + "/" + oldPath;
 			String relativeNewPath = currentPath == null ? newPath : currentPath + "/" + newPath;
 			System.out.println("FOUND IMPACTED:" + currentPath + " > " + relativeOldPath + " > " + relativeNewPath);
