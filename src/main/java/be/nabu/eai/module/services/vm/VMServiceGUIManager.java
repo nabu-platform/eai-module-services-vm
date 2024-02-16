@@ -112,6 +112,7 @@ import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.ModifiableComplexType;
 import be.nabu.libs.types.base.ElementImpl;
 import be.nabu.libs.types.base.ValueImpl;
+import be.nabu.libs.types.properties.AllowProperty;
 import be.nabu.libs.types.properties.RestrictProperty;
 import be.nabu.libs.types.properties.ValidateProperty;
 import be.nabu.libs.types.structure.Structure;
@@ -801,6 +802,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		element.getBlockedProperties().addAll(element.getSupportedProperties());
 		// allow restrictions!
 		element.getBlockedProperties().remove(RestrictProperty.getInstance());
+		element.getBlockedProperties().remove(AllowProperty.getInstance());
 		
 		inputTree = structureManager.display(controller, input, element, isInterfaceEditable(), false);
 		inputTree.setClipboardHandler(new ElementClipboardHandler(inputTree));
@@ -822,6 +824,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		element.getBlockedProperties().addAll(element.getSupportedProperties());
 		// allow restrictions!
 		element.getBlockedProperties().remove(RestrictProperty.getInstance());
+		element.getBlockedProperties().remove(AllowProperty.getInstance());
 		
 		outputTree = structureManager.display(controller, output, element, isInterfaceEditable(), false);
 		outputTree.setClipboardHandler(new ElementClipboardHandler(outputTree));
