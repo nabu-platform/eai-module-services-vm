@@ -132,6 +132,11 @@
 	-fx-border-radius: 5px;
 }
 
+.vm-comment-todo {
+	-fx-font-weight: bold;
+	-fx-text-fill: #730303;
+}
+
 .interfaceContainer {
 	-fx-border-style: solid;
 	-fx-border-color: #CCCCCC;

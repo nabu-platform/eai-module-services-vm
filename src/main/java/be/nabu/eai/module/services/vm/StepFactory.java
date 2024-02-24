@@ -431,6 +431,9 @@ public class StepFactory implements Callback<TreeItem<Step>, TreeCellValue<Step>
 				if (labelText != null || preamble) {
 					label.getStyleClass().add("vm-margin-left");
 				}
+				if (comment.contains("TODO")) {
+					label.getStyleClass().add("vm-comment-todo");
+				}
 				box.getChildren().addAll(label);
 			}
 		}
