@@ -382,7 +382,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					}
 					VMService service = newVMService(entry.getRepository(), entry.getId(), updater.getValues());
 					getArtifactManager().save(entry, service);
-					controller.getRepositoryBrowser().refresh();
+//					controller.getRepositoryBrowser().refresh();
+					EAIDeveloperUtils.reload(target.itemProperty().get().getId());
 					Tab tab = controller.newTab(entry.getId(), instance);
 					AnchorPane pane = new AnchorPane();
 					tab.setContent(pane);
