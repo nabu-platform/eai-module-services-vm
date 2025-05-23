@@ -40,6 +40,11 @@ import be.nabu.libs.validator.api.Validator;
 public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 
 	private static final SimpleProperty<Boolean> OPTIONAL_PROPERTY = new SimpleProperty<Boolean>("optional", Boolean.class, true);
+	private static final SimpleProperty<Boolean> PATCH_PROPERTY = new SimpleProperty<Boolean>("patch", Boolean.class, true);
+	static {
+		OPTIONAL_PROPERTY.setDescription("The value will only be applied if the target value is null, this is mainly to set default values");
+		PATCH_PROPERTY.setDescription("The value will only be applied if the source value has an explicitly defined value");
+	}
 	private Link link;
 	private Mapping mapping;
 	private Repository repository;
@@ -69,6 +74,7 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 			}
 		}
 		properties.add(OPTIONAL_PROPERTY);
+		properties.add(PATCH_PROPERTY);
 		return properties;
 	}
 	
@@ -89,11 +95,12 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 	public Value<?>[] getValues() {
 		List<Value<?>> values = new ArrayList<Value<?>>();
 		for (Property<?> property : getSupportedProperties()) {
-			if (!property.equals(OPTIONAL_PROPERTY)) {
+			if (!property.equals(OPTIONAL_PROPERTY) && !property.equals(PATCH_PROPERTY)) {
 				values.add(new ValueImpl(property, getCurrentIndex((LinkIndexProperty) property)));
 			}
 		}
 		values.add(new ValueImpl(OPTIONAL_PROPERTY, link.isOptional()));
+		values.add(new ValueImpl(PATCH_PROPERTY, link.isPatch()));
 		return values.toArray(new Value[0]);
 	}
 
@@ -128,6 +135,9 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 		}
 		else if (property.equals(OPTIONAL_PROPERTY)) {
 			link.setOptional(value instanceof Boolean && (Boolean) value);
+		}
+		else if (property.equals(PATCH_PROPERTY)) {
+			link.setPatch(value instanceof Boolean && (Boolean) value);
 		}
 		else {
 			throw new RuntimeException("Unsupported");
