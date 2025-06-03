@@ -17,10 +17,16 @@
 
 package be.nabu.eai.module.services.vm.util;
 
+import java.util.List;
+import java.util.Set;
+
 import be.nabu.eai.developer.MainController;
 import be.nabu.jfx.control.tree.TreeCell;
+import be.nabu.libs.property.api.Property;
 import be.nabu.libs.services.vm.step.Drop;
+import be.nabu.libs.services.vm.step.Link;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.validator.api.ValidationMessage;
 import javafx.event.EventHandler;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
@@ -33,16 +39,20 @@ public class DropWrapper {
 	private Drop drop;
 	private TreeCell<Element<?>> cell;
 	private ImageView image;
+	private String sourceId;
 
-	public DropWrapper(TreeCell<Element<?>> cell, Drop drop) {
+	public DropWrapper(TreeCell<Element<?>> cell, Drop drop, String sourceId) {
 		this.cell = cell;
 		this.drop = drop;
+		this.sourceId = sourceId;
 		draw();
 	}
 	
 	private void draw() {
 		image = MainController.loadGraphic("drop.png");
 		image.setManaged(false);
+		// allow key events
+		image.setFocusTraversable(true);
 		((Pane) cell.getTree().getParent()).getChildren().add(image);
 		image.layoutXProperty().bind(cell.leftAnchorXProperty().subtract(10));
 		// image is 16 pixels, we want to center it
@@ -55,6 +65,25 @@ public class DropWrapper {
 			@Override
 			public void handle(MouseEvent arg0) {
 				cell.show();
+				image.requestFocus();
+				// I don't want to rebuild the logic for links, just reuse it, should refactor in the future
+				Link tmp = new Link();
+				tmp.setTo(drop.getPath());
+				tmp.setFixedValue(true);
+				MainController.getInstance().showProperties(new LinkPropertyUpdater(tmp, null, MainController.getInstance().getRepository(), sourceId) {
+					@Override
+					public List<ValidationMessage> updateProperty(Property<?> property, Object value) {
+						List<ValidationMessage> updateProperty = super.updateProperty(property, value);
+						drop.setPath(tmp.getTo());
+						return updateProperty;
+					}
+
+					@Override
+					public Set<Property<?>> getSupportedProperties() {
+						return super.getBasicProperties();
+					}
+					
+				});
 			}
 		});
 		Tooltip.install(image, new Tooltip(drop.getPath()));
@@ -67,4 +96,13 @@ public class DropWrapper {
 	public ImageView getImage() {
 		return image;
 	}
+
+	public TreeCell<Element<?>> getCell() {
+		return cell;
+	}
+
+	public Drop getDrop() {
+		return drop;
+	}
+	
 }

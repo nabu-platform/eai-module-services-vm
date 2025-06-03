@@ -49,7 +49,7 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 	private Mapping mapping;
 	private Repository repository;
 	private String sourceId;
-
+	
 	public LinkPropertyUpdater(Link link, Mapping mapping, Repository repository, String sourceId) {
 		this.link = link;
 		this.mapping = mapping;
@@ -59,6 +59,13 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 	
 	@Override
 	public Set<Property<?>> getSupportedProperties() {
+		Set<Property<?>> properties = getBasicProperties();
+		properties.add(OPTIONAL_PROPERTY);
+		properties.add(PATCH_PROPERTY);
+		return properties;
+	}
+
+	protected Set<Property<?>> getBasicProperties() {
 		Set<Property<?>> properties = new LinkedHashSet<Property<?>>();
 		// if the input is not fixed, explode that as well
 		if (!link.isFixedValue()) {
@@ -73,8 +80,6 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 				properties.add(new LinkIndexProperty(indexed, false));
 			}
 		}
-		properties.add(OPTIONAL_PROPERTY);
-		properties.add(PATCH_PROPERTY);
 		return properties;
 	}
 	
@@ -149,8 +154,8 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 			else {
 				mapping.removeStyleClass("indexQueryLine");
 			}
+			mapping.calculateLabels();
 		}
-		mapping.calculateLabels();
 		MainController.getInstance().setChanged();
 		return new ArrayList<ValidationMessage>();
 	}

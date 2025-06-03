@@ -1137,7 +1137,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									if (link.isFixedValue()) {
 										// must be mapped to the input of an invoke
 										Tree<Element<?>> tree = invokeWrappers.get(((Invoke) child).getResultName()).getInput();
-										FixedValue fixedValue = buildFixedValue(controller, tree, link);
+										FixedValue fixedValue = buildFixedValue(controller, tree, link, locked);
 										if (fixedValue == null) {
 											controller.notify(new ValidationMessage(Severity.ERROR, "The fixed value to " + link.getTo() + " is no longer valid"));
 											if (removeInvalid) {
@@ -1183,7 +1183,8 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 						while (iterator.hasNext()) {
 							Step child = iterator.next();
 							if (child instanceof Drop) {
-								DropWrapper wrapper = buildDropWrapper(rightTree, (Drop) child);
+								DropWrapper wrapper = buildDropWrapper(rightTree, (Drop) child, id);
+								instantiateDropWrapper(wrapper, locked);
 								if (wrapper == null) {
 									controller.notify(new ValidationMessage(Severity.ERROR, "The drop " + ((Drop) child).getPath() + " is no longer valid"));
 									if (removeInvalid) {
@@ -1197,7 +1198,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							else if (child instanceof Link) {
 								final Link link = (Link) child;
 								if (link.isFixedValue()) {
-									FixedValue fixedValue = buildFixedValue(controller, rightTree, link);
+									FixedValue fixedValue = buildFixedValue(controller, rightTree, link, locked);
 									if (fixedValue == null) {
 										controller.notify(new ValidationMessage(Severity.ERROR, "The fixed value to " + link.getTo() + " is no longer valid"));
 										if (removeInvalid) {
@@ -1642,7 +1643,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		
 		private Tree<Element<?>> tree;
 		
-		public DropButton(final StepGroup step) {
+		public DropButton(final StepGroup step, String id) {
 			setTooltip(new Tooltip("Drop"));
 			setGraphic(MainController.loadGraphic("drop.png"));
 			addEventHandler(ActionEvent.ACTION, new EventHandler<ActionEvent>() {
@@ -1659,24 +1660,29 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								// if the drop already exists, undrop it
 								while(iterator.hasNext()) {
 									Step child = iterator.next();
-									if (child instanceof Drop && path.equals(((Drop) child).getPath())) {
-										existing = true;
-										iterator.remove();
-										if (drops.containsKey(child)) {
-											drops.get(child).remove();
-											drops.remove(child);
+									if (child instanceof Drop) {
+										String normalizedPath = ((Drop) child).getPath().replaceAll("\\[[^\\]]+\\]", "");
+										if (path.equals(normalizedPath)) {
+											existing = true;
+											iterator.remove();
+											if (drops.containsKey(child)) {
+												drops.get(child).remove();
+												drops.remove(child);
+											}
+											MainController.getInstance().setChanged();
+											break;
 										}
-										MainController.getInstance().setChanged();
-										break;
 									}
 								}
 								// otherwise add a drop
 								if (!existing) {
 									Drop drop = new Drop();
-									drop.setPath(path);
+									ParsedPath parsed = new ParsedPath(path);
+									DropLinkListener.setDefaultIndexes(parsed, tree.rootProperty().get(), true);
+									drop.setPath(parsed.toString());
 									drop.setParent(step);
 									step.getChildren().add(drop);
-									drops.put(drop, new DropWrapper(selected, drop));
+									drops.put(drop, instantiateDropWrapper(new DropWrapper(selected, drop, id), null));
 									
 									// if we are creating a new drop, remove any links to the target
 									iterator = step.getChildren().iterator();
@@ -1770,7 +1776,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		structureManager.setActualId(actualId);
 		try {
 			// drop button was added afterwards, hence the mess
-			DropButton dropButton = new DropButton(step);
+			DropButton dropButton = new DropButton(step, actualId);
 			// this button was added even later!
 			Button linkButton = new Button();
 			linkButton.setGraphic(MainController.loadGraphic(getIcon(Map.class)));
@@ -1944,20 +1950,59 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		return leftTree;
 	}
 	
-	private DropWrapper buildDropWrapper(Tree<Element<?>> tree, Drop drop) {
+	private DropWrapper buildDropWrapper(Tree<Element<?>> tree, Drop drop, String id) {
 		TreeItem<Element<?>> target = VMServiceGUIManager.find(tree.rootProperty().get(), new ParsedPath(drop.getPath()));
 		if (target == null) {
 			return null;
 		}
-		return new DropWrapper(tree.getTreeCell(target), drop);
+		return new DropWrapper(tree.getTreeCell(target), drop, id);
 	}
 	
-	private FixedValue buildFixedValue(MainController controller, Tree<Element<?>> tree, Link link) {
+	private DropWrapper instantiateDropWrapper(DropWrapper wrapper, ReadOnlyBooleanProperty lock) {
+		wrapper.getImage().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+			@Override
+			public void handle(KeyEvent event) {
+				if (event.getCode() == KeyCode.F8 && (lock == null || lock.get())) {
+					boolean toIsList = wrapper.getCell().getItem().itemProperty().get().getType().isList(wrapper.getCell().getItem().itemProperty().get().getProperties());
+					// can be null when mapping to the input of an invoke
+					if (wrapper.getDrop().getPath() != null) {
+						ParsedPath path = new ParsedPath(wrapper.getDrop().getPath());
+						DropLinkListener.setDefaultIndexes(path, wrapper.getCell().getTree().rootProperty().get(), toIsList);
+						if (!path.toString().equals(wrapper.getDrop().getPath())) {
+							wrapper.getDrop().setPath(path.toString());
+							MainController.getInstance().setChanged();
+						}
+					}
+				}
+			}
+		});
+		return wrapper;
+	}
+	
+	private FixedValue buildFixedValue(MainController controller, Tree<Element<?>> tree, Link link, ReadOnlyBooleanProperty lock) {
 		TreeItem<Element<?>> target = VMServiceGUIManager.find(tree.rootProperty().get(), new ParsedPath(link.getTo()));
 		if (target == null) {
 			return null;
 		}
-		return new FixedValue(controller, tree.getTreeCell(target), link, controller.getRepository(), actualId);
+		FixedValue fixedValue = new FixedValue(controller, tree.getTreeCell(target), link, controller.getRepository(), actualId);
+		fixedValue.getImage().addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+			@Override
+			public void handle(KeyEvent event) {
+				if (event.getCode() == KeyCode.F8 && (lock == null || lock.get())) {
+					boolean toIsList = fixedValue.getCell().getItem().itemProperty().get().getType().isList(fixedValue.getCell().getItem().itemProperty().get().getProperties());
+					// can be null when mapping to the input of an invoke
+					if (fixedValue.getLink().getTo() != null) {
+						ParsedPath path = new ParsedPath(fixedValue.getLink().getTo());
+						DropLinkListener.setDefaultIndexes(path, fixedValue.getCell().getTree().rootProperty().get(), toIsList);
+						if (!path.toString().equals(fixedValue.getLink().getTo())) {
+							fixedValue.getLink().setTo(path.toString());
+							MainController.getInstance().setChanged();
+						}
+					}
+				}
+			}
+		});
+		return fixedValue;
 	}
 	
 	private Mapping buildMapping(Link link, Pane target, Tree<Element<?>> left, Tree<Element<?>> right, java.util.Map<String, InvokeWrapper> invokeWrappers, ReadOnlyBooleanProperty lock) {

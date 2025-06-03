@@ -109,6 +109,8 @@ public class FixedValue {
 	private void draw(final MainController controller, final Link link) {
 		image = MainController.loadGraphic("fixed-value.png");
 		image.setManaged(false);
+		// allow key events
+		image.setFocusTraversable(true);
 		((Pane) cell.getTree().getParent()).getChildren().add(image);
 		image.layoutXProperty().bind(cell.leftAnchorXProperty().subtract(10));
 		// image is 16 pixels, we want to center it
@@ -121,6 +123,7 @@ public class FixedValue {
 			@Override
 			public void handle(MouseEvent arg0) {
 				cell.show();
+				image.requestFocus();
 				controller.showProperties(new LinkPropertyUpdater(link, null, repository, sourceId));
 			}
 		});
