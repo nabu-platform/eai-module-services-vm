@@ -413,6 +413,12 @@ public class Mapping {
 		fromCircle.centerYProperty().bind(sourceYProperty());
 		fromCircle.setRadius(2);
 		fromCircle.getStyleClass().add("connectionCircle");
+		if (link.getPatch() != null && link.getPatch()) {
+			fromCircle.getStyleClass().add("patchLink");	
+		}
+		if (link.getSourceNotNull() != null && link.getSourceNotNull()) {
+			fromCircle.getStyleClass().add("sourceNotNullLink");	
+		}
 		fromCircle.setManaged(false);
 		
 		toCircle = new Circle();
@@ -420,6 +426,9 @@ public class Mapping {
 		toCircle.centerYProperty().bind(targetYProperty());
 		toCircle.setRadius(2);
 		toCircle.getStyleClass().add("connectionCircle");
+		if (link.getOptional() != null && link.getOptional()) {
+			toCircle.getStyleClass().add("optionalLink");	
+		}
 		toCircle.setManaged(false);
 	}
 	

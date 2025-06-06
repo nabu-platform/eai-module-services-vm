@@ -39,10 +39,12 @@ import be.nabu.libs.validator.api.Validator;
 
 public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 
-	private static final SimpleProperty<Boolean> OPTIONAL_PROPERTY = new SimpleProperty<Boolean>("optional", Boolean.class, true);
-	private static final SimpleProperty<Boolean> PATCH_PROPERTY = new SimpleProperty<Boolean>("patch", Boolean.class, true);
+	private static final SimpleProperty<Boolean> OPTIONAL_PROPERTY = new SimpleProperty<Boolean>("targetIsNull", Boolean.class, true);
+	private static final SimpleProperty<Boolean> SOURCE_NOT_NULL_PROPERTY = new SimpleProperty<Boolean>("sourceNotNull", Boolean.class, true);
+	private static final SimpleProperty<Boolean> PATCH_PROPERTY = new SimpleProperty<Boolean>("sourceHasValue", Boolean.class, true);
 	static {
 		OPTIONAL_PROPERTY.setDescription("The value will only be applied if the target value is null, this is mainly to set default values");
+		SOURCE_NOT_NULL_PROPERTY.setDescription("The value will only be applied if the source value has a non-null value");
 		PATCH_PROPERTY.setDescription("The value will only be applied if the source value has an explicitly defined value");
 	}
 	private Link link;
@@ -62,6 +64,7 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 		Set<Property<?>> properties = getBasicProperties();
 		properties.add(OPTIONAL_PROPERTY);
 		properties.add(PATCH_PROPERTY);
+		properties.add(SOURCE_NOT_NULL_PROPERTY);
 		return properties;
 	}
 
@@ -100,12 +103,13 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 	public Value<?>[] getValues() {
 		List<Value<?>> values = new ArrayList<Value<?>>();
 		for (Property<?> property : getSupportedProperties()) {
-			if (!property.equals(OPTIONAL_PROPERTY) && !property.equals(PATCH_PROPERTY)) {
+			if (!property.equals(OPTIONAL_PROPERTY) && !property.equals(PATCH_PROPERTY) && !property.equals(SOURCE_NOT_NULL_PROPERTY)) {
 				values.add(new ValueImpl(property, getCurrentIndex((LinkIndexProperty) property)));
 			}
 		}
-		values.add(new ValueImpl(OPTIONAL_PROPERTY, link.isOptional()));
-		values.add(new ValueImpl(PATCH_PROPERTY, link.isPatch()));
+		values.add(new ValueImpl(OPTIONAL_PROPERTY, link.getOptional()));
+		values.add(new ValueImpl(PATCH_PROPERTY, link.getPatch()));
+		values.add(new ValueImpl(SOURCE_NOT_NULL_PROPERTY, link.getSourceNotNull()));
 		return values.toArray(new Value[0]);
 	}
 
@@ -139,10 +143,13 @@ public class LinkPropertyUpdater implements PropertyUpdaterWithSource {
 			}
 		}
 		else if (property.equals(OPTIONAL_PROPERTY)) {
-			link.setOptional(value instanceof Boolean && (Boolean) value);
+			link.setOptional(value instanceof Boolean && (Boolean) value ? (Boolean) value : null);
 		}
 		else if (property.equals(PATCH_PROPERTY)) {
-			link.setPatch(value instanceof Boolean && (Boolean) value);
+			link.setPatch(value instanceof Boolean && (Boolean) value ? (Boolean) value : null);
+		}
+		else if (property.equals(SOURCE_NOT_NULL_PROPERTY)) {
+			link.setSourceNotNull(value instanceof Boolean && (Boolean) value ? (Boolean) value : null);
 		}
 		else {
 			throw new RuntimeException("Unsupported");

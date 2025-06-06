@@ -2055,7 +2055,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 					return new RemoveLinkListener(link).remove(mapping);
 				}
 			});
-			if (link.isMask()) {
+			if (link.getMask() != null && link.getMask()) {
 				mapping.addStyleClass("maskLine");
 			}
 			if (hasIndexQuery(from) || (to != null && hasIndexQuery(to))) {

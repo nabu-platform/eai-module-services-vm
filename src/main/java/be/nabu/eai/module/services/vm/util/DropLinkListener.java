@@ -157,8 +157,11 @@ public class DropLinkListener implements TreeDropListener<Element<?>> {
 		final Link link = new Link(from.toString(), to == null ? null : to.toString());
 		// by reusing that bit of code, we finally get F8 support from the getgo instead of after refreshing the map step
 		Mapping mapping = VMServiceGUIManager.buildMapping(link, serviceController.getPanMap(), (TreeCell<Element<?>>) dragged, target, lock);
-		link.setMask(mask);
-		if (link.isMask()) {
+		// only explicitly set the value if it is true
+		if (mask) {
+			link.setMask(mask);
+		}
+		if (link.getMask() != null && link.getMask()) {
 			mapping.addStyleClass("maskLine");
 		}
 		// if the target is an invoke, the mapping has to be done inside the invoke

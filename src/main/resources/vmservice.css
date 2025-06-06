@@ -165,6 +165,19 @@
 	-fx-stroke-width: 3px;
 }
 
+.connectionCircle.optionalLink {
+	-fx-stroke: #aa0000;
+	-fx-fill: #fc1818;
+}
+.connectionCircle.sourceNotNullLink {
+	-fx-stroke: #aa0000;
+	-fx-fill: #fc1818;
+}
+.connectionCircle.patchLink {
+	-fx-stroke: #aa0000;
+	-fx-fill: #fc1818;
+}
+
 .indexQueryLine {
 	-fx-stroke: #20B2AA;
 }
