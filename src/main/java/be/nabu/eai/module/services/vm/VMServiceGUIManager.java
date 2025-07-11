@@ -2174,6 +2174,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 		public void handle(Event arg0) {
 			TreeCell<Step> selectedItem = tree.getSelectionModel().getSelectedItem();
 			if (selectedItem != null) {
+				boolean isAdded = false;
 				// add an element in it
 				if (selectedItem.getItem().itemProperty().get() instanceof StepGroup) {
 					if (!(selectedItem.getItem().itemProperty().get() instanceof LimitedStepGroup)
@@ -2183,6 +2184,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							instance.setParent((StepGroup) selectedItem.getItem().itemProperty().get());
 							((StepGroup) selectedItem.getItem().itemProperty().get()).getChildren().add(instance);
 							selectedItem.expandedProperty().set(true);
+							isAdded = true;
 							MainController.getInstance().setChanged();
 						}
 						catch (InstantiationException e) {
@@ -2192,8 +2194,35 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							throw new RuntimeException(e);
 						}
 					}
+					((StepTreeItem) selectedItem.getItem()).refresh();
 				}
-				((StepTreeItem) selectedItem.getItem()).refresh();
+				// add an element after it
+				if (!isAdded) {
+					Step parentStep = selectedItem.getItem().getParent().itemProperty().get();
+					if (parentStep instanceof StepGroup) {
+						try {
+							if (!(parentStep instanceof LimitedStepGroup)
+									|| ((LimitedStepGroup) parentStep).getAllowedSteps().contains(step)) {
+								Step instance = step.newInstance();
+								instance.setParent((StepGroup) parentStep);
+								int indexOf = ((StepGroup) parentStep).getChildren().indexOf(selectedItem.getItem().itemProperty().get());
+								if (indexOf < 0 || indexOf >= ((StepGroup) parentStep).getChildren().size() - 1) {
+									((StepGroup) parentStep).getChildren().add(instance);
+								}
+								else {
+									((StepGroup) parentStep).getChildren().add(indexOf + 1, instance);
+								}
+								selectedItem.getParent().refresh();
+								isAdded = true;
+								MainController.getInstance().setChanged();
+							}
+						}
+						catch (Exception e) {
+							logger.error("Could not add element", e);
+						}
+					}
+				}
+				
 				
 				// renumber to match
 				renumber(serviceTree);
