@@ -1184,7 +1184,6 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 							Step child = iterator.next();
 							if (child instanceof Drop) {
 								DropWrapper wrapper = buildDropWrapper(rightTree, (Drop) child, id);
-								instantiateDropWrapper(wrapper, locked);
 								if (wrapper == null) {
 									controller.notify(new ValidationMessage(Severity.ERROR, "The drop " + ((Drop) child).getPath() + " is no longer valid"));
 									if (removeInvalid) {
@@ -1192,6 +1191,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 									}
 								}
 								else {
+									instantiateDropWrapper(wrapper, locked);
 									drops.put((Drop) child, wrapper);
 								}
 							}
