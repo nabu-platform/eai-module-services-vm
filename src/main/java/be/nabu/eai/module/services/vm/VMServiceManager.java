@@ -23,6 +23,7 @@ import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -79,6 +80,7 @@ import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.binding.api.Window;
+import be.nabu.libs.types.binding.xml.AttributeFilter;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanResolver;
@@ -92,7 +94,22 @@ import be.nabu.utils.io.api.WritableContainer;
 
 public class VMServiceManager implements ArtifactManager<VMService>, BrokenReferenceArtifactManager<VMService>, VariableRefactorArtifactManager<VMService>, ValidatableArtifactManager<VMService> {
 	
+	private static boolean PRETTIFY_SERVICE = "true".equals(System.getProperty("vm.prettify", "true"));
+	
 	private static Logger logger = LoggerFactory.getLogger(VMServiceManager.class);
+	private static java.util.Map<String, String> customTagMapping = java.util.Map.ofEntries(
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Break", "break"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Catch", "catch"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Drop", "drop"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Finally", "finally"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.For", "for"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Invoke", "invoke"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Link", "link"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Map", "map"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Sequence", "sequence"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Switch", "switch"),
+		java.util.Map.entry("be.nabu.libs.services.vm.step.Throw", "throw")
+	);
 	
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
@@ -124,7 +141,13 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 
 	public static Sequence parseSequence(ReadableContainer<ByteBuffer> readable) throws IOException, ParseException {
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
+		sequenceBinding.setCustomTagMapping(customTagMapping);
 		sequenceBinding.setTrimContent(false);
+		HashMap<String, String> hashMap = new HashMap<>();
+		for (java.util.Map.Entry<String, String> entry : customTagMapping.entrySet()) {
+			hashMap.put(entry.getValue(), "steps");
+		}
+		sequenceBinding.setRenameTag(hashMap);
 		Sequence sequence = null;
 		try {
 			sequence = TypeUtils.getAsBean(sequenceBinding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), Sequence.class);
@@ -179,9 +202,35 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 	}
 
 	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence) throws IOException {
+		formatSequence(writable, sequence, PRETTIFY_SERVICE);
+	}
+	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence, boolean prettify) throws IOException {
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
 		sequenceBinding.setMultilineInAttributes(true);
 		sequenceBinding.setMultilineAttributes(true);
+		if (prettify) {
+			sequenceBinding.setAllowXSI(false);
+			sequenceBinding.setCustomTagMapping(customTagMapping);
+			sequenceBinding.setAttributeFilter(new AttributeFilter() {
+				@Override
+				public boolean accept(Object content, String attribute, String value) {
+					java.util.Map<String, String> map = java.util.Map.of(
+						"mask", "false",
+						"optional", "false",
+						"disabled", "false",
+						"recache", "false",
+						"asynchronous", "false",
+						"fixedValue", "false",
+						"whitelist", "false",
+						"temporaryMapping", "true",
+						"invocationOrder", "0"
+					);
+					Object defaultValue = map.get(attribute);
+					return !"lineNumber".equals(attribute) && (defaultValue == null || !defaultValue.equals(value));
+				}
+			});
+			sequenceBinding.setSameLineAttributes(List.of("id"));
+		}
 		try {
 			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(sequence));
 		}
@@ -657,5 +706,6 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 			}
 		}
 	}
+
 }
 
