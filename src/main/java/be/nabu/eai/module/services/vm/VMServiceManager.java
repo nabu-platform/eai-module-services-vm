@@ -229,7 +229,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 					return !"lineNumber".equals(attribute) && (defaultValue == null || !defaultValue.equals(value));
 				}
 			});
-			sequenceBinding.setSameLineAttributes(List.of("id"));
+			sequenceBinding.setSameLineAttributes(List.of("id"));// "x", "y"
 		}
 		try {
 			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(sequence));
