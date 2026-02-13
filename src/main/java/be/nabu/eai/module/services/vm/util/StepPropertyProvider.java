@@ -80,6 +80,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			properties.add(new ExceptionProperty());
 			properties.add(new SuppressExceptionProperty());
 			properties.add(new CodeProperty());
+			properties.add(new StackTraceRegexProperty());
 		}
 		else if (step instanceof For) {
 			properties.add(new QueryProperty());
@@ -147,6 +148,7 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 				}
 			}
 			values.add(new ValueImpl<String>(new CodeProperty(), codes));
+			values.add(new ValueImpl<String>(new StackTraceRegexProperty(), ((Catch) step).getStacktraceRegex()));
 		}
 		else if (step instanceof For) {
 			values.add(new ValueImpl<String>(new QueryProperty(), ((For) step).getQuery()));
@@ -243,6 +245,9 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 			}
 			else if (property instanceof CodeProperty) {
 				((Catch) step).setCodes(value == null || value.toString().trim().isEmpty() ? null : new ArrayList<String>(Arrays.asList(value.toString().split("[\\s]*,[\\s]*"))));
+			}
+			else if (property instanceof StackTraceRegexProperty) {
+				((Catch) step).setStacktraceRegex(value == null || value.toString().trim().isEmpty() ? null : value.toString().trim());
 			}
 		}
 		else if (step instanceof For) {
@@ -647,6 +652,21 @@ public class StepPropertyProvider implements PropertyUpdaterWithSource {
 		@Override
 		public String getName() {
 			return "into";
+		}
+		@Override
+		public Validator<String> getValidator() {
+			return null;
+		}
+		@Override
+		public Class<String> getValueClass() {
+			return String.class;
+		}
+	}
+	
+	public static class StackTraceRegexProperty extends BaseProperty<String> {
+		@Override
+		public String getName() {
+			return "stacktraceRegex";
 		}
 		@Override
 		public Validator<String> getValidator() {

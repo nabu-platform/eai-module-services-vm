@@ -1678,7 +1678,7 @@ public class VMServiceGUIManager implements PortableArtifactGUIManager<VMService
 								if (!existing) {
 									Drop drop = new Drop();
 									ParsedPath parsed = new ParsedPath(path);
-									DropLinkListener.setDefaultIndexes(parsed, tree.rootProperty().get(), true);
+									DropLinkListener.setDefaultIndexes(parsed, tree.rootProperty().get(), false);
 									drop.setPath(parsed.toString());
 									drop.setParent(step);
 									step.getChildren().add(drop);

@@ -172,7 +172,13 @@ public class RepositoryExecutorProvider implements ExecutorProvider {
 						runnerInput.set("serviceId", ((DefinedService) service).getId());
 						if (properties != null) {
 							for (String key : properties.keySet()) {
-								runnerInput.set(key, properties.get(key));
+								try {
+									runnerInput.set(key, properties.get(key));
+								}
+								catch (Exception e) {
+									logger.error("Could not set runner input: " + key + " = " + properties.get(key), e);
+									throw new RuntimeException(e);
+								}
 							}
 						}
 						return repository.getServiceRunner().run(runner, context, runnerInput, observers);

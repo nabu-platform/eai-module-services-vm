@@ -19,7 +19,6 @@ package be.nabu.eai.module.services.vm;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 
 import javafx.beans.property.ObjectProperty;
@@ -39,8 +38,6 @@ import javafx.scene.layout.Region;
 import javafx.util.Callback;
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.module.services.vm.util.VMServiceUtils;
-import be.nabu.eai.repository.EAIResourceRepository;
-import be.nabu.eai.repository.api.Entry;
 import be.nabu.jfx.control.tree.TreeCell;
 import be.nabu.jfx.control.tree.TreeCellValue;
 import be.nabu.jfx.control.tree.TreeItem;
