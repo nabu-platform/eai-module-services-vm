@@ -38,7 +38,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	@Override
-	public List<Validation<?>> updateFragment(SimpleVMServiceDefinition artifact, String path, String content) {
+	public List<Validation<?>> updateFragment(SimpleVMServiceDefinition artifact, String path, String oldContent, String newContent) {
 		throw new UnsupportedOperationException("Updating fragments is not supported for VM services");
 	}
 
