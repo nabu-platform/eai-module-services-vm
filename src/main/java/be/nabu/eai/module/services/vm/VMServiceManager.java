@@ -22,6 +22,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -205,6 +206,9 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 		formatSequence(writable, sequence, PRETTIFY_SERVICE);
 	}
 	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence, boolean prettify) throws IOException {
+		formatSequence(writable, sequence, PRETTIFY_SERVICE, Arrays.asList("lineNumber"));
+	}
+	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence, boolean prettify, List<String> blacklistedAttributes) throws IOException {
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
 		sequenceBinding.setMultilineInAttributes(true);
 		sequenceBinding.setMultilineAttributes(true);
@@ -226,7 +230,7 @@ public class VMServiceManager implements ArtifactManager<VMService>, BrokenRefer
 						"invocationOrder", "0"
 					);
 					Object defaultValue = map.get(attribute);
-					return !"lineNumber".equals(attribute) && (defaultValue == null || !defaultValue.equals(value));
+					return !blacklistedAttributes.contains(attribute) && (defaultValue == null || !defaultValue.equals(value));
 				}
 			});
 			sequenceBinding.setSameLineAttributes(List.of("id"));// "x", "y"
