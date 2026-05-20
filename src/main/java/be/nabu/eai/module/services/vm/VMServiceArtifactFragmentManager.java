@@ -19,8 +19,6 @@ import be.nabu.eai.repository.impl.DefinedServiceArtifactFragmentManager;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
-import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
-import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
 import be.nabu.libs.services.vm.api.Step;
@@ -87,10 +85,12 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 			}
 			if (SERVICE_PATH.equals(path)) {
 				Sequence updated = VMServiceManager.parseSequence(IOUtils.wrap(newContent.getBytes("UTF-8"), true));
-				updated.setDefinition(service);
-				validateSequence(service, updated, validations);
+				SimpleVMServiceDefinition candidate = withPipeline(service, service.getPipeline());
+				candidate.setRoot(updated);
+				mergeStepMetadata(service.getRoot(), updated);
+				validateSequence(candidate, updated, validations);
 				if (!hasErrors(validations)) {
-					mergeStepMetadata(service.getRoot(), updated);
+					updated.setDefinition(service);
 					service.setRoot(updated);
 					validations.addAll(new VMServiceManager().save(entry, service));
 				}
@@ -123,30 +123,9 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	private void validateSequence(SimpleVMServiceDefinition service, Sequence sequence, List<Validation<?>> validations) {
-		validations.addAll(sequence.validate(new SimpleServiceContext()));
-		validateStep(service, sequence, validations);
+		validations.addAll(sequence.validate(EAIResourceRepository.getInstance().getServiceContext()));
 	}
 
-	private void validateStep(SimpleVMServiceDefinition service, Step step, List<Validation<?>> validations) {
-		if (step instanceof Invoke) {
-			Invoke invoke = (Invoke) step;
-			DefinedService resolved = (DefinedService) invoke.getService(new SimpleServiceContext());
-			if (resolved == null) {
-				validations.add(invoke.addContext(new ValidationMessage(ValidationMessage.Severity.ERROR, "Could not find service: " + invoke.getServiceId())));
-			}
-		}
-		if (step instanceof Link) {
-			Link link = (Link) step;
-			if (!link.isFixedValue() && link.getFrom() != null) {
-				validations.addAll(step.validate(new SimpleServiceContext()));
-			}
-		}
-		if (step instanceof StepGroup) {
-			for (Step child : ((StepGroup) step).getChildren()) {
-				validateStep(service, child, validations);
-			}
-		}
-	}
 
 	private void mergeStepMetadata(Sequence original, Sequence updated) {
 		Map<Step, Step> matches = new IdentityHashMap<Step, Step>();
@@ -338,8 +317,13 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	@Override
-	public String getArtifactType(SimpleVMServiceDefinition artifact) {
+	public String getArtifactType() {
 		return ARTIFACT_TYPE;
+	}
+
+	@Override
+	public String getArtifactCategory() {
+		return "service";
 	}
 
 	private class EditableAliasFragment implements ArtifactFragment {
