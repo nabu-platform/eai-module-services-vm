@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -89,6 +88,8 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				candidate.setRoot(updated);
 				mergeStepMetadata(service.getRoot(), updated);
 				validateSequence(candidate, updated, validations);
+				normalizeInvokeCoordinates(updated);
+				validateInvocationOrder(updated, validations);
 				if (!hasErrors(validations)) {
 					updated.setDefinition(service);
 					service.setRoot(updated);
@@ -126,6 +127,41 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		validations.addAll(sequence.validate(EAIResourceRepository.getInstance().getServiceContext()));
 	}
 
+	private void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {
+		if (group instanceof Map) {
+			validations.addAll(((be.nabu.libs.services.vm.step.Map) group).calculateInvocationOrder());
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof StepGroup) {
+				validateInvocationOrder((StepGroup) child, validations);
+			}
+		}
+	}
+
+	private void normalizeInvokeCoordinates(StepGroup group) {
+		if (group instanceof Map) {
+			for (Step child : group.getChildren()) {
+				if (child instanceof Invoke) {
+					Invoke invoke = (Invoke) child;
+					if (invoke.getX() == 0) {
+						invoke.setX(25 + invoke.getInvocationOrder() * 100);
+					}
+					if (invoke.getY() == 0) {
+						invoke.setY(25 + invoke.getInvocationOrder() * 75);
+					}
+				}
+				if (child instanceof StepGroup) {
+					normalizeInvokeCoordinates((StepGroup) child);
+				}
+			}
+			return;
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof StepGroup) {
+				normalizeInvokeCoordinates((StepGroup) child);
+			}
+		}
+	}
 
 	private void mergeStepMetadata(Sequence original, Sequence updated) {
 		Map<Step, Step> matches = new IdentityHashMap<Step, Step>();
@@ -223,47 +259,19 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		if (fragmentTypes == null || fragmentTypes.isEmpty()) {
 			filtered.add("# Artifact: blox\n\nFragments:\n- `metadata`: repository metadata around the VM service\n- `input-definition`: editable alias for the pipeline input branch\n- `output-definition`: editable alias for the pipeline output branch\n- `pipeline`: canonical editable pipeline definition\n- `service`: VM step sequence\n");
 			filtered.add(super.getGuidelines(Arrays.asList("metadata")));
-			filtered.add("## Fragment: pipeline\n\n"
-				+ "`pipeline.xml` is the canonical editable VM pipeline definition.\n\n"
-				+ "It uses structure semantics, but with VM-specific meaning:\n"
-				+ "- `input` and `output` are embedded inside the pipeline\n"
-				+ "- `input.xml` and `output.xml` are aliases that patch those embedded branches\n"
-				+ "- input and output validation can be toggled on the corresponding pipeline elements\n"
-				+ "- inherited pipeline root properties are preserved unless explicitly overridden\n\n"
-				+ "Example of toggled input/output validation:\n"
-				+ "```xml\n"
-				+ "<structure name=\"pipeline\">\n"
-				+ "\t<structure name=\"input\" validate=\"true\">\n"
-				+ "\t\t<field name=\"customerId\" type=\"java.lang.String\" minOccurs=\"1\"/>\n"
-				+ "\t</structure>\n"
-				+ "\t<structure name=\"output\" validate=\"false\">\n"
-				+ "\t\t<field name=\"result\" type=\"java.lang.String\"/>\n"
-				+ "\t</structure>\n"
-				+ "</structure>\n"
-				+ "```\n\n"
-				+ "When editing pipeline fragments, also apply the structure rules from the `structure` artifact, with the extra VM-specific notes above.");
-			filtered.add("## Fragment: input-definition\n\n"
-				+ "`input.xml` is an editable alias for the pipeline input definition.\n\n"
-				+ "Updating it patches only the `input` branch inside `pipeline.xml`.\n"
-				+ "Use this for focused input-shape edits when you do not want to rewrite the whole pipeline.");
-			filtered.add("## Fragment: output-definition\n\n"
-				+ "`output.xml` is an editable alias for the pipeline output definition.\n\n"
-				+ "Updating it patches only the `output` branch inside `pipeline.xml`.\n"
-				+ "Use this for focused output-shape edits when you do not want to rewrite the whole pipeline.");
+			filtered.add("## Fragment: input.xml\n\n"
+				+ "`input.xml` is an editable alias for the pipeline input definition.\n\n");
+			filtered.add("## Fragment: output.xml\n\n"
+				+ "`output.xml` is an editable alias for the pipeline output definition.\n\n");
 			filtered.add("## Fragment: service\n\n"
 				+ "`service.xml` is the VM step sequence.\n\n"
-				+ "Update behavior:\n"
-				+ "- parses the XML into a typed step tree\n"
-				+ "- validates typed variable queries against the pipeline\n"
-				+ "- verifies invoked services resolve\n"
-				+ "- preserves visual/internal metadata like `id`, `x`, `y` and `lineNumber` best effort\n\n"
 				+ "TypeScript shape:\n"
 				+ "```typescript\n"
 				+ "type B=boolean|\"true\"|\"false\"\n\n"
 				+ "type S={comment?:string,name?:string,label?:string,disabled?:B,features?:string,description?:string}\n\n"
 				+ "type Link=S&{t:\"link\",from?:string,to?:string,mask?:B,optional?:B,patch?:B,fixedValue?:B,sourceNotNull?:B}\n"
 				+ "type Drop=S&{t:\"drop\",path:string}\n"
-				+ "type Invoke=S&{t:\"invoke\",serviceId:string,resultName?:string,temporaryMapping?:B,invocationOrder?:number|string,target?:string,property?:{key:string,value:string}[],asynchronous?:B,recache?:B,children?:Link[]}\n"
+				+ "type Invoke=S&{t:\"invoke\",serviceId:string,resultName?:string,temporaryMapping?:B,invocationOrder?:number|string,target?:string,property?:{key:string,value:string}[],recache?:B,children?:Link[]}\n"
 				+ "type Throw=S&{t:\"throw\",code?:string,message?:string,data?:string,alias?:string,realm?:string,authenticationId?:string,whitelist?:B}\n"
 				+ "type Break=S&{t:\"break\",count?:number|string,continueExecution?:B}\n\n"
 				+ "type C=Sequence|Map|Switch|For|Throw|Break\n\n"
@@ -282,8 +290,82 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				+ "\t\t<link from=\"input/customerId\" to=\"id\"/>\n"
 				+ "\t</invoke>\n"
 				+ "\t<throw code=\"NOT_FOUND\" message=\"=customer == null ? 'Missing customer' : null\"/>\n"
-				+ "</sequence>\n"
-				+ "```" );
+				+ "</sequence>\n\n"
+				+ "```\n\n### pipeline.xml\n"
+				+ "\n"
+				+ "- uses structure semantics (check skill for `artifact:structure`)\n"
+				+ "- defines static variables including input and output\n"
+				+ "- dynamic variables (e.g. for `variable`) are injected at runtime and don't exist in pipeline.xml\n"
+				+ "- variables must have unique names and can not be reassigned\n"
+				+ "- enable input or output validation by setting `validate=\"true\"`, for example `<structure name=\"input\" validate=\"true\">`\n"
+				+ "\n"
+				+ "### Query Engine\n"
+				+ "\n"
+				+ "A `link` has a `from` attribute, accepting:\n"
+				+ "\n"
+				+ "1) Fixed Values: Auto-cast to target types. Prefix with = for math (e.g., =a + b). No Java or method calls. The left operand dictates the type (\"1\" + 1 yields \"11\"; 1 + \"1\" yields 2). Defaults: double (decimals), long (integers). Use b for exactness (1b = BigInteger, 1.0b = BigDecimal)\n"
+				+ "\n"
+				+ "2) Queries: XPath-like syntax with Java operators (e.g., customers[name == \"test\" && vat == \"something\"]). Condition queries always return lists; index queries (e.g., customers[1]) return single items. Linking a list to a singular target is permitted ONLY if the list contains exactly one item at runtime. This feature can be used as a guard.\n"
+				+ "\n"
+				+ "The `to` attribute defines the target and requires explicit indices where applicable (e.g., employees[0]/name\n"
+				+ "Scalars are automatically converted when possible.\n"
+				+ "\n"
+				+ "Use `drop` to unset a value.\n"
+				+ "\n"
+				+ "### Masked link\n"
+				+ "\n"
+				+ "Use `mask` instead of standard <link> when two structures share fields but lack a shared object hierarchy. It recursively auto-casts types and ignores non-overlapping fields.\n"
+				+ "\n"
+				+ "### Invokes\n"
+				+ "\n"
+				+ "- Calls artifacts in the artifactGroup `service` (contracts defined in input.xml/output.xml).\n"
+				+ "- Inputs map via <link> statements inside the <invoke>.\n"
+				+ "- Outputs are stored in a dynamic pipeline variable named via `resultName`.\n"
+				+ "- Dependent invokes within the same map step require a higher `invocationOrder` than their prerequisites (default is 0).\n"
+				+ "\n"
+				+ "### For\n"
+				+ "\n"
+				+ "- Iterates over a `query`, a fixed number (e.g., 1000), or a boolean condition (loops until false).\n"
+				+ "- Variables: Injects `variable` (current item) and `index` dynamically into the pipeline for the loop's scope.\n"
+				+ "- `into` attribute: Aggregates loop iteration outputs directly into a target list. Preferred over `nabu.utils.List.add`.\n"
+				+ "- `batch` attribute: Fetches records in chunks; variables become a list instead of a single item.\n"
+				+ "\n"
+				+ "Anti-Pattern: Avoid DB selects inside loops. Pre-select data and use queries for small iterations or `nabu.utils.List.hash` to create a keyed lookup map for large iterations. Unique map keys yield single-item lists, safely linkable to singular targets within the loop.\n"
+				+ "\n"
+				+ "### Label\n"
+				+ "\n"
+				+ "- `label`: A boolean execution condition for a step. Null or empty lists evaluate to false (e.g., !myRecords). Sequential steps with labels evaluate independently.\n"
+				+ "- `switch`: Wraps steps to execute only the first matching label.\n"
+				+ "	- With `query`: Evaluates query == label.\n"
+				+ "	- Without `query`: Evaluates the full condition in each label (acts as if/else).\n"
+				+ "	- An empty label acts as the default fallback.\n"
+				+ "\n"
+				+ "### Comments/Descriptions\n"
+				+ "\n"
+				+ "- `comments`: Developer-facing explanations for step logic.\n"
+				+ "- `description`: Runtime-resolved logs. Prefix with = to evaluate variables.\n"
+				+ "\n"
+				+ "## Exceptions\n"
+				+ "\n"
+				+ "- `throw`:\n"
+				+ "	- `message`: Static error string (no variables).\n"
+				+ "	- `description`: Detailed context (variables allowed).\n"
+				+ "	- `data`: Arbitrary context (use = for variables).\n"
+				+ "	- `code`: Required structural identifier (e.g., CONTRACT-EXPIRED). Numeric codes (e.g., 404) map to HTTP status codes on API calls.\n"
+				+ "	- Errors and data remain hidden from APIs unless whitelist is active.\n"
+				+ "- `catch`/`finally`: Rarely used. Resource management (streams, locks) is automatic. Let errors bubble up.\n"
+				+ "\n"
+				+ "### Break\n"
+				+ "\n"
+				+ "Exits a `for` or `sequence`. `count` dictates break depth (default 1). Use `continueExecution=\"true\"` to skip to the next for iteration.\n"
+				+ "\n"
+				+ "### Sequence\n"
+				+ "\n"
+				+ "`sequence`: Grouping block and mandatory root of any service. Functions inherently as a try/catch block.\n"
+				+ "\n"
+				+ "Transactions: No autocommit. The root service manages the global transaction (success = commit, exception = rollback). For localized control, apply `scopeDefaultTransaction=\"true\"` to a sequence.\n"
+				+ "\n"
+				+ "Locking: Set `synchronized=\"true\"` on a sequence for exclusive, cluster-wide execution. The lock releases when the sequence completes." );
 			return String.join("\n\n", filtered);
 		}
 		filtered.add("# Artifact: blox\n");
