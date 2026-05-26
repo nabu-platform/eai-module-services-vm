@@ -5,12 +5,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.module.types.structure.StructureManager;
+import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.CreatableArtifactFragmentManager;
@@ -66,7 +69,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 			}
 		}
 		fragments.addAll(Arrays.<ArtifactFragment>asList(
-			new RepositoryEntryFragment(artifact, PIPELINE_PATH),
+			new SanitizedPipelineFragment(artifact),
 			new SanitizedServiceFragment(artifact)
 		));
 		return fragments;
@@ -106,8 +109,9 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				candidate.setRoot(updated);
 				mergeStepMetadata(service.getRoot(), updated);
 				validateSequence(candidate, updated, validations);
-				normalizeInvokeCoordinates(updated);
+				validateForbiddenStepAttributes(updated, validations);
 				validateInvocationOrder(updated, validations);
+				normalizeInvokeCoordinates(updated);
 				if (!hasErrors(validations)) {
 					updated.setDefinition(service);
 					service.setRoot(updated);
@@ -156,16 +160,65 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
+	private void validateForbiddenStepAttributes(StepGroup group, List<Validation<?>> validations) {
+		for (Step child : group.getChildren()) {
+			if (child instanceof Invoke || child instanceof Link || child instanceof be.nabu.libs.services.vm.step.Drop) {
+				validateForbiddenStepAttributes(child, validations);
+			}
+			if (child instanceof StepGroup) {
+				validateForbiddenStepAttributes((StepGroup) child, validations);
+			}
+		}
+	}
+
+	private void validateForbiddenStepAttributes(Step step, List<Validation<?>> validations) {
+		validateForbiddenStepAttribute(step, "label", step.getLabel(), validations);
+		validateForbiddenStepAttribute(step, "comment", step.getComment(), validations);
+		validateForbiddenStepAttribute(step, "description", step.getDescription(), validations);
+		validateForbiddenStepAttribute(step, "name", step.getName(), validations);
+		validateForbiddenStepAttribute(step, "features", step.getFeatures(), validations);
+		if (step.isDisabled()) {
+			validations.add(addStepValidation(step, "disabled is not allowed on <" + getStepTag(step) + ">"));
+		}
+	}
+
+	private void validateForbiddenStepAttribute(Step step, String attribute, String value, List<Validation<?>> validations) {
+		if (value != null && !value.trim().isEmpty()) {
+			validations.add(addStepValidation(step, attribute + " is not allowed on <" + getStepTag(step) + ">"));
+		}
+	}
+
+	private ValidationMessage addStepValidation(Step step, String message) {
+		String id = step.getId();
+		return new ValidationMessage(ValidationMessage.Severity.ERROR, id == null || id.trim().isEmpty() ? message : message + " [" + id + "]");
+	}
+
+	private String getStepTag(Step step) {
+		return step.getClass().getSimpleName().toLowerCase();
+	}
+
 	private void normalizeInvokeCoordinates(StepGroup group) {
 		if (group instanceof Map) {
+			Map<Integer, Integer> offsets = new HashMap<Integer, Integer>();
 			for (Step child : group.getChildren()) {
 				if (child instanceof Invoke) {
 					Invoke invoke = (Invoke) child;
-					if (invoke.getX() == 0) {
-						invoke.setX(25 + invoke.getInvocationOrder() * 100);
+					int invocationOrder = invoke.getInvocationOrder();
+					Integer offset = offsets.get(invocationOrder);
+					if (offset == null) {
+						offset = 0;
 					}
-					if (invoke.getY() == 0) {
-						invoke.setY(25 + invoke.getInvocationOrder() * 75);
+					else {
+						offset++;
+					}
+					offsets.put(invocationOrder, offset);
+					double x = invoke.getX();
+					double y = invoke.getY();
+					if (x <= 0) {
+						invoke.setX(25 + invocationOrder * 150);
+					}
+					if (y <= 0) {
+						invoke.setY(25 + offset * 100);
 					}
 				}
 				if (child instanceof StepGroup) {
@@ -348,6 +401,11 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		public Map<String, String> getProperties() {
 			return delegate.getProperties();
 		}
+
+		@Override
+		public Long getLastModified() {
+			return delegate.getLastModified();
+		}
 	}
 
 	private class RepositoryEntryFragment implements ArtifactFragment {
@@ -398,6 +456,75 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		@Override
 		public Map<String, String> getProperties() {
 			return Collections.emptyMap();
+		}
+
+		@Override
+		public Long getLastModified() {
+			return getFragmentLastModified(artifact.getId(), path);
+		}
+	}
+
+	private class SanitizedPipelineFragment implements ArtifactFragment {
+
+		private SimpleVMServiceDefinition artifact;
+
+		public SanitizedPipelineFragment(SimpleVMServiceDefinition artifact) {
+			this.artifact = artifact;
+		}
+
+		@Override
+		public boolean isEditable() {
+			return true;
+		}
+
+		@Override
+		public boolean isRemovable() {
+			return true;
+		}
+
+		@Override
+		public String getPath() {
+			return PIPELINE_PATH;
+		}
+
+		@Override
+		public String getContent() {
+			ResourceEntry entry = getResourceEntry(artifact);
+			try {
+				XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();
+				marshaller.setIgnoreUnknownSuperTypes(true);
+				ByteArrayOutputStream output = new ByteArrayOutputStream();
+				marshaller.marshal(output, new ServiceInterfaceManager().loadPipeline(entry, new ArrayList<Validation<?>>()));
+				return new String(output.toByteArray(), "UTF-8");
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		@Override
+		public String getContentType() {
+			return CONTENT_TYPE;
+		}
+
+		@Override
+		public String getArtifactId() {
+			return artifact.getId();
+		}
+
+		@Override
+		public String getFragmentType() {
+			return "pipeline";
+		}
+
+		@Override
+		public Map<String, String> getProperties() {
+			return Collections.emptyMap();
+		}
+
+		@Override
+		public Long getLastModified() {
+			return getFragmentLastModified(artifact.getId(), PIPELINE_PATH);
 		}
 	}
 
@@ -463,6 +590,11 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		@Override
 		public Map<String, String> getProperties() {
 			return Collections.emptyMap();
+		}
+
+		@Override
+		public Long getLastModified() {
+			return getFragmentLastModified(artifact.getId(), SERVICE_PATH);
 		}
 	}
 

@@ -13,9 +13,9 @@ type B=boolean|"true"|"false"
 
 type S={comment?:string,name?:string,label?:string,disabled?:B,features?:string,description?:string}
 
-type Link=S&{t:"link",from?:string,to?:string,mask?:B,optional?:B,patch?:B,fixedValue?:B,sourceNotNull?:B}
-type Drop=S&{t:"drop",path:string}
-type Invoke=S&{t:"invoke",serviceId:string,resultName?:string,temporaryMapping?:B,invocationOrder?:number|string,target?:string,property?:{key:string,value:string}[],recache?:B,children?:Link[]}
+type Link={t:"link",from?:string,to?:string,mask?:B,optional?:B,patch?:B,fixedValue?:B,sourceNotNull?:B}
+type Drop={t:"drop",path:string}
+type Invoke={t:"invoke",serviceId:string,resultName?:string,temporaryMapping?:B,invocationOrder?:number|string,target?:string,property?:{key:string,value:string}[],recache?:B,children?:Link[]}
 type Throw=S&{t:"throw",code?:string,message?:string,data?:string,alias?:string,realm?:string,authenticationId?:string,whitelist?:B}
 type Break=S&{t:"break",count?:number|string,continueExecution?:B}
 
@@ -34,9 +34,11 @@ type Service=Sequence
 Example:
 ```xml
 <sequence>
-	<invoke serviceId="example.customer.lookup" resultName="customer">
-		<link from="input/customerId" to="id"/>
-	</invoke>
+	<map label="input/customerId != null">
+		<invoke serviceId="example.customer.lookup" resultName="customer">
+			<link from="input/customerId" to="id"/>
+		</invoke>
+	</map>
 </sequence>
 ```
 
@@ -47,6 +49,10 @@ Example:
 - dynamic variables (e.g. for `variable`) are injected at runtime and don't exist in pipeline.xml
 - variables must have unique names and can not be reassigned
 - enable input or output validation by setting `validate="true"`, for example `<structure name="input" validate="true">`
+
+### <map>
+
+- collection of <link>, <invoke> and <drop>, grouped for clarity
 
 ### <link>
 
@@ -59,9 +65,11 @@ A `link` has a `from` attribute, accepting:
 The `to` attribute defines the target and requires explicit indices where applicable (e.g., employees[0]/name
 Scalars are automatically converted when possible.
 
-Use `drop` to unset a value.
+Use `drop` to unset a value. Never in same map step that sets the value.
 
 Use `mask` instead of standard <link> when two structures share fields but lack a shared object hierarchy. It recursively auto-casts types and ignores non-overlapping fields.
+
+Conditional links must be in a map step with that condition. If it conflicts with the map step they are in, move them to a new map step.
 
 ### <invoke>
 
@@ -69,6 +77,8 @@ Use `mask` instead of standard <link> when two structures share fields but lack 
 - Inputs map via <link> statements inside the <invoke>.
 - Outputs are stored in a dynamic pipeline variable named via `resultName`.
 - Dependent invokes within the same map step require a higher `invocationOrder` than their prerequisites (default is 0).
+
+Conditional invokes must be in a map step with that condition. If it conflicts with the map step they are in, move them to a new map step.
 
 ### <for>
 
