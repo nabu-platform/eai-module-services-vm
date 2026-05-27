@@ -10,6 +10,9 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.module.types.structure.StructureManager;
@@ -37,6 +40,7 @@ import be.nabu.utils.io.IOUtils;
 
 public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFragmentManager<SimpleVMServiceDefinition> implements CreatableArtifactFragmentManager<SimpleVMServiceDefinition> {
 
+	private static final Logger logger = LoggerFactory.getLogger(VMServiceArtifactFragmentManager.class);
 	private static final String PIPELINE_PATH = "pipeline.xml";
 	private static final String SERVICE_PATH = "service.xml";
 	private static final String CONTENT_TYPE = "application/xml";
@@ -77,57 +81,74 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 	@Override
 	public List<Validation<?>> updateFragment(SimpleVMServiceDefinition artifact, String path, String oldContent, String newContent) {
-		List<Validation<?>> validations = new ArrayList<Validation<?>>();
 		ResourceEntry entry = getResourceEntry(artifact);
+		List<Validation<?>> validations = applyFragment(entry, artifact, path, oldContent, newContent);
+		if (!hasErrors(validations)) {
+			try {
+				validations.addAll(new VMServiceManager().save(entry, artifact));
+			}
+			catch (Exception e) {
+				String message = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
+				logger.error("Failed to save VM service fragment '{}' for artifact '{}'", path, artifact.getId(), e);
+				validations.add(new ValidationMessage(ValidationMessage.Severity.ERROR, message));
+			}
+		}
+		return validations;
+	}
+
+	public List<Validation<?>> applyFragment(ResourceEntry entry, SimpleVMServiceDefinition artifact, String path, String oldContent, String newContent) {
+		List<Validation<?>> validations = new ArrayList<Validation<?>>();
 		try {
-			SimpleVMServiceDefinition service = (SimpleVMServiceDefinition) new VMServiceManager().load(entry, validations);
 			if (PIPELINE_PATH.equals(path)) {
-				Pipeline updated = StructureManager.parseUpdatedStructure(entry, newContent, service.getPipeline(), new Pipeline(null, null), validations);
-				SimpleVMServiceDefinition updatedService = withPipeline(service, updated);
+				Pipeline updated = StructureManager.parseUpdatedStructure(entry, newContent, artifact.getPipeline(), new Pipeline(null, null), validations);
 				if (!hasErrors(validations)) {
-					validations.addAll(new VMServiceManager().save(entry, updatedService));
+					artifact.setRoot(withPipeline(artifact, updated).getRoot());
+					copyPipeline(artifact.getPipeline(), updated);
 				}
 				return validations;
 			}
 			if ("input.xml".equals(path) || "output.xml".equals(path)) {
-				Pipeline updated = StructureManager.parseUpdatedStructure(entry, readRepositoryResource(service, PIPELINE_PATH), service.getPipeline(), new Pipeline(null, null), validations);
+				Pipeline updated = StructureManager.parseUpdatedStructure(entry, readRepositoryResource(artifact, PIPELINE_PATH), artifact.getPipeline(), new Pipeline(null, null), validations);
 				if (!hasErrors(validations)) {
-					StructureManager.parse(entry, newContent.getBytes("UTF-8"), validations, (be.nabu.libs.types.structure.Structure) updated.get("input.xml".equals(path) ? Pipeline.INPUT : Pipeline.OUTPUT).getType());
-					StructureManager.inheritRootProperties((be.nabu.libs.types.structure.Structure) service.getPipeline().get("input.xml".equals(path) ? Pipeline.INPUT : Pipeline.OUTPUT).getType(), (be.nabu.libs.types.structure.Structure) updated.get("input.xml".equals(path) ? Pipeline.INPUT : Pipeline.OUTPUT).getType());
+					be.nabu.libs.types.structure.Structure target = (be.nabu.libs.types.structure.Structure) updated.get("input.xml".equals(path) ? Pipeline.INPUT : Pipeline.OUTPUT).getType();
+					StructureManager.parse(entry, newContent.getBytes("UTF-8"), validations, target);
+					StructureManager.inheritRootProperties((be.nabu.libs.types.structure.Structure) artifact.getPipeline().get("input.xml".equals(path) ? Pipeline.INPUT : Pipeline.OUTPUT).getType(), target);
 					if (!hasErrors(validations)) {
-						SimpleVMServiceDefinition updatedService = withPipeline(service, updated);
-						if (!hasErrors(validations)) {
-							validations.addAll(new VMServiceManager().save(entry, updatedService));
-						}
+						copyPipeline(artifact.getPipeline(), updated);
 					}
 				}
 				return validations;
 			}
 			if (SERVICE_PATH.equals(path)) {
 				Sequence updated = VMServiceManager.parseSequence(IOUtils.wrap(newContent.getBytes("UTF-8"), true));
-				SimpleVMServiceDefinition candidate = withPipeline(service, service.getPipeline());
+				SimpleVMServiceDefinition candidate = withPipeline(artifact, artifact.getPipeline());
 				candidate.setRoot(updated);
-				mergeStepMetadata(service.getRoot(), updated);
+				mergeStepMetadata(artifact.getRoot(), updated);
 				validateSequence(candidate, updated, validations);
 				validateForbiddenStepAttributes(updated, validations);
 				validateInvocationOrder(updated, validations);
+				validateLinkFixedValueConsistency(updated, validations);
 				normalizeInvokeCoordinates(updated);
 				if (!hasErrors(validations)) {
-					updated.setDefinition(service);
-					service.setRoot(updated);
-					validations.addAll(new VMServiceManager().save(entry, service));
+					updated.setDefinition(artifact);
+					artifact.setRoot(updated);
 				}
 				return validations;
 			}
 			throw new UnsupportedOperationException("Updating fragments is only supported for pipeline.xml and service.xml on VM services");
 		}
 		catch (Exception e) {
-			validations.add(new ValidationMessage(ValidationMessage.Severity.ERROR, e.getMessage() == null ? e.getClass().getName() : e.getMessage()));
+			String message = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
+			if (entry == null) {
+				message += " [artifactId=" + artifact.getId() + "]";
+			}
+			logger.error("Failed to update VM service fragment '{}' for artifact '{}'", path, artifact.getId(), e);
+			validations.add(new ValidationMessage(ValidationMessage.Severity.ERROR, message));
 			return validations;
 		}
 	}
 
-	private SimpleVMServiceDefinition withPipeline(SimpleVMServiceDefinition service, Pipeline pipeline) {
+	public SimpleVMServiceDefinition withPipeline(SimpleVMServiceDefinition service, Pipeline pipeline) {
 		SimpleVMServiceDefinition updated = new SimpleVMServiceDefinition(pipeline);
 		updated.setId(service.getId());
 		updated.setExecutorProvider(service.getExecutorProvider());
@@ -136,7 +157,14 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		return updated;
 	}
 
-	private boolean hasErrors(List<Validation<?>> validations) {
+	public void copyPipeline(Pipeline target, Pipeline source) {
+		for (be.nabu.libs.types.api.Element<?> child : source) {
+			target.add(child);
+		}
+		target.setProperty(source.getProperties());
+	}
+
+	protected boolean hasErrors(List<Validation<?>> validations) {
 		for (Validation<?> validation : validations) {
 			if (validation != null && validation.getSeverity() == ValidationMessage.Severity.ERROR) {
 				return true;
@@ -145,11 +173,11 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		return false;
 	}
 
-	private void validateSequence(SimpleVMServiceDefinition service, Sequence sequence, List<Validation<?>> validations) {
+	protected void validateSequence(SimpleVMServiceDefinition service, Sequence sequence, List<Validation<?>> validations) {
 		validations.addAll(sequence.validate(EAIResourceRepository.getInstance().getServiceContext()));
 	}
 
-	private void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {
+	protected void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {
 		if (group instanceof Map) {
 			validations.addAll(((be.nabu.libs.services.vm.step.Map) group).calculateInvocationOrder());
 		}
@@ -160,7 +188,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
-	private void validateForbiddenStepAttributes(StepGroup group, List<Validation<?>> validations) {
+	protected void validateForbiddenStepAttributes(StepGroup group, List<Validation<?>> validations) {
 		for (Step child : group.getChildren()) {
 			if (child instanceof Invoke || child instanceof Link || child instanceof be.nabu.libs.services.vm.step.Drop) {
 				validateForbiddenStepAttributes(child, validations);
@@ -168,6 +196,24 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 			if (child instanceof StepGroup) {
 				validateForbiddenStepAttributes((StepGroup) child, validations);
 			}
+		}
+	}
+
+	protected void validateLinkFixedValueConsistency(StepGroup group, List<Validation<?>> validations) {
+		for (Step child : group.getChildren()) {
+			if (child instanceof Link) {
+				validateLinkFixedValueConsistency((Link) child, validations);
+			}
+			if (child instanceof StepGroup) {
+				validateLinkFixedValueConsistency((StepGroup) child, validations);
+			}
+		}
+	}
+
+	private void validateLinkFixedValueConsistency(Link link, List<Validation<?>> validations) {
+		String from = link.getFrom();
+		if (!link.isFixedValue() && from != null && from.startsWith("=")) {
+			validations.add(addStepValidation(link, "from starts with '=' but fixedValue is false on <link>"));
 		}
 	}
 
@@ -197,7 +243,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		return step.getClass().getSimpleName().toLowerCase();
 	}
 
-	private void normalizeInvokeCoordinates(StepGroup group) {
+	protected void normalizeInvokeCoordinates(StepGroup group) {
 		if (group instanceof Map) {
 			Map<Integer, Integer> offsets = new HashMap<Integer, Integer>();
 			for (Step child : group.getChildren()) {
@@ -234,7 +280,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
-	private void mergeStepMetadata(Sequence original, Sequence updated) {
+	protected void mergeStepMetadata(Sequence original, Sequence updated) {
 		Map<Step, Step> matches = new IdentityHashMap<Step, Step>();
 		matchChildren(original, updated, matches);
 		for (Map.Entry<Step, Step> entry : matches.entrySet()) {
@@ -598,7 +644,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
-	private String readRepositoryResource(SimpleVMServiceDefinition artifact, String path) {
+	protected String readRepositoryResource(SimpleVMServiceDefinition artifact, String path) {
 		ResourceEntry entry = getResourceEntry(artifact);
 		try {
 			Resource resource = EAIRepositoryUtils.getResource(entry, path, false);
@@ -611,7 +657,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
-	private ResourceEntry getResourceEntry(SimpleVMServiceDefinition artifact) {
+	protected ResourceEntry getResourceEntry(SimpleVMServiceDefinition artifact) {
 		return (ResourceEntry) EAIResourceRepository.getInstance().getEntry(artifact.getId());
 	}
 	

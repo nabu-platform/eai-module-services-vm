@@ -59,8 +59,9 @@ Example:
 A `link` has a `from` attribute, accepting:
 
 1) Fixed Values: Auto-cast to target types. Prefix with = for math (e.g., =a + b). No Java, method calls or ternaries. The left operand dictates the type ("1" + 1 yields "11"; 1 + "1" yields 2). Defaults: double (decimals), long (integers). Use b for exactness (1b = BigInteger, 1.0b = BigDecimal)
+You MUST set `fixedValue` to true for this.
 
-2) Queries: XPath-like syntax with Java operators (e.g., customers[name == "test" && vat == "something"]). Condition queries always return lists; index queries (e.g., customers[1]) return single items. Linking a list to a singular target is permitted ONLY if the list contains exactly one item at runtime. This feature can be used as a guard.
+2) Queries against the pipeline: XPath-like syntax with Java operators (e.g., customers[name == "test" && vat == "something"]). Condition queries always return lists; index queries (e.g., customers[1]) return single items. Linking a list to a singular target is permitted ONLY if the list contains exactly one item at runtime. This feature can be used as a guard.
 
 The `to` attribute defines the target and requires explicit indices where applicable (e.g., employees[0]/name
 Scalars are automatically converted when possible.
