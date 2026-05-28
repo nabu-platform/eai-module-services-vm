@@ -25,6 +25,7 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.impl.DefinedServiceArtifactFragmentManager;
 import be.nabu.libs.resources.ResourceReadableContainer;
+import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.services.vm.Pipeline;
@@ -360,15 +361,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		return left == null ? right == null : left.equals(right);
 	}
 
-	@Override
-	public List<Validation<?>> deleteFragment(SimpleVMServiceDefinition artifact, String path) {
-		throw new UnsupportedOperationException("Deleting fragments is not supported for VM services");
-	}
 
-	@Override
-	public List<Validation<?>> createFragment(SimpleVMServiceDefinition artifact, String path, String content) {
-		throw new UnsupportedOperationException("Creating fragments is not supported for VM services");
-	}
 
 	@Override
 	public String getGuidelines(List<String> fragmentTypes) {
@@ -601,7 +594,10 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		public String getContent() {
 			ResourceEntry entry = getResourceEntry(artifact);
 			try {
-				Resource resource = EAIRepositoryUtils.getResource(entry, SERVICE_PATH, false);
+				Resource resource = ResourceUtils.resolve(entry.getContainer(), SERVICE_PATH);
+				if (resource == null) {
+					throw new IOException("Can not find " + SERVICE_PATH);
+				}
 				try (ResourceReadableContainer readable = new ResourceReadableContainer((ReadableResource) resource)) {
 					ByteArrayOutputStream output = new ByteArrayOutputStream();
 					VMServiceManager.formatSequence(
@@ -635,7 +631,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 		@Override
 		public Map<String, String> getProperties() {
-			return Collections.emptyMap();
+			return getDefinedServiceProperties(artifact);
 		}
 
 		@Override
@@ -647,7 +643,10 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	protected String readRepositoryResource(SimpleVMServiceDefinition artifact, String path) {
 		ResourceEntry entry = getResourceEntry(artifact);
 		try {
-			Resource resource = EAIRepositoryUtils.getResource(entry, path, false);
+			Resource resource = ResourceUtils.resolve(entry.getContainer(), path);
+			if (resource == null) {
+				throw new IOException("Can not find " + path);
+			}
 			try (ResourceReadableContainer readable = new ResourceReadableContainer((ReadableResource) resource)) {
 				return new String(IOUtils.toBytes(readable), "UTF-8");
 			}
