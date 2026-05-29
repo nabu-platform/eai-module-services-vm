@@ -78,6 +78,8 @@ Conditional links must be in a map step with that condition. If it conflicts wit
 - Inputs map via <link> statements inside the <invoke>.
 - Outputs are stored in a dynamic pipeline variable named via `resultName`.
 - Dependent invokes within the same map step require a higher `invocationOrder` than their prerequisites (default is 0).
+- Independent invokes can have the same `invocationOrder`
+- Invokes should have the lowest possible `invocationOrder` based on their dependencies.
 
 Conditional invokes must be in a map step with that condition. If it conflicts with the map step they are in, move them to a new map step.
 

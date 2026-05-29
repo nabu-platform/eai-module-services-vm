@@ -179,7 +179,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	protected void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {
-		if (group instanceof Map) {
+		if (group instanceof be.nabu.libs.services.vm.step.Map) {
 			validations.addAll(((be.nabu.libs.services.vm.step.Map) group).calculateInvocationOrder());
 		}
 		for (Step child : group.getChildren()) {
@@ -245,8 +245,9 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	protected void normalizeInvokeCoordinates(StepGroup group) {
-		if (group instanceof Map) {
+		if (group instanceof be.nabu.libs.services.vm.step.Map) {
 			Map<Integer, Integer> offsets = new HashMap<Integer, Integer>();
+			int invokeCounter = 0;
 			for (Step child : group.getChildren()) {
 				if (child instanceof Invoke) {
 					Invoke invoke = (Invoke) child;
@@ -262,11 +263,13 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 					double x = invoke.getX();
 					double y = invoke.getY();
 					if (x <= 0) {
-						invoke.setX(25 + invocationOrder * 150);
+						invoke.setX(25 + invocationOrder * 250);
 					}
 					if (y <= 0) {
-						invoke.setY(25 + offset * 100);
+//						invoke.setY(25 + offset * 150);
+						invoke.setY(25 + invokeCounter * 85);
 					}
+					invokeCounter++;
 				}
 				if (child instanceof StepGroup) {
 					normalizeInvokeCoordinates((StepGroup) child);
@@ -352,8 +355,14 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 			updated.setLineNumber(original.getLineNumber());
 		}
 		if (original instanceof Invoke && updated instanceof Invoke) {
-			((Invoke) updated).setX(((Invoke) original).getX());
-			((Invoke) updated).setY(((Invoke) original).getY());
+			Invoke originalInvoke = (Invoke) original;
+			Invoke updatedInvoke = (Invoke) updated;
+			if (originalInvoke.getX() > 0) {
+				updatedInvoke.setX(originalInvoke.getX());
+			}
+			if (originalInvoke.getY() > 0) {
+				updatedInvoke.setY(originalInvoke.getY());
+			}
 		}
 	}
 
