@@ -159,6 +159,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	public void copyPipeline(Pipeline target, Pipeline source) {
+		target.removeAll();
 		for (be.nabu.libs.types.api.Element<?> child : source) {
 			target.add(child);
 		}

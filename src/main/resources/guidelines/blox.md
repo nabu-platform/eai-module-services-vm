@@ -50,6 +50,8 @@ Example:
 - variables must have unique names and can not be reassigned
 - enable input or output validation by setting `validate="true"`, for example `<structure name="input" validate="true">`
 
+You must only use defined structures on the pipeline, do not create anonymous structures within the pipeline.
+
 ### <map>
 
 - collection of <link>, <invoke> and <drop>, grouped for clarity
