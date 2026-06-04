@@ -13,6 +13,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.libs.evaluator.types.api.TypeOperation;
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
 import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.module.types.structure.StructureManager;
@@ -24,17 +25,24 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.impl.DefinedServiceArtifactFragmentManager;
+import be.nabu.libs.property.api.Value;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
+import be.nabu.libs.services.api.Service;
+import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Link;
 import be.nabu.libs.services.vm.step.Sequence;
+import be.nabu.libs.types.BaseTypeInstance;
+import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.Type;
+import be.nabu.libs.types.api.TypeInstance;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.utils.io.IOUtils;
@@ -129,6 +137,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				validateForbiddenStepAttributes(updated, validations);
 				validateInvocationOrder(updated, validations);
 				validateLinkFixedValueConsistency(updated, validations);
+				validateLinkCompatibility(candidate, updated, validations);
 				normalizeInvokeCoordinates(updated);
 				if (!hasErrors(validations)) {
 					updated.setDefinition(artifact);
@@ -217,6 +226,65 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		if (!link.isFixedValue() && from != null && from.startsWith("=")) {
 			validations.add(addStepValidation(link, "from starts with '=' but fixedValue is false on <link>"));
 		}
+	}
+
+	protected void validateLinkCompatibility(SimpleVMServiceDefinition service, StepGroup group, List<Validation<?>> validations) {
+		ServiceContext serviceContext = EAIResourceRepository.getInstance().getServiceContext();
+		for (Step child : group.getChildren()) {
+			if (child instanceof Link) {
+				validateLinkCompatibility(service, (Link) child, serviceContext, validations);
+			}
+			if (child instanceof StepGroup) {
+				validateLinkCompatibility(service, (StepGroup) child, validations);
+			}
+		}
+	}
+
+	private void validateLinkCompatibility(SimpleVMServiceDefinition service, Link link, ServiceContext serviceContext, List<Validation<?>> validations) {
+		String from = link.getFrom();
+		if (from == null || link.isFixedValue()) {
+			return;
+		}
+		try {
+			ComplexType sourceContext = link.getParent().getPipeline(serviceContext);
+			ComplexType targetContext = getLinkTargetContext(link, serviceContext);
+			if (targetContext == null) {
+				return;
+			}
+			TypeInstance fromInstance = getReturnTypeInstance(link, from, sourceContext, validations);
+			TypeInstance toInstance = link.getTo() == null ? new BaseTypeInstance(targetContext) : getReturnTypeInstance(link, link.getTo(), targetContext, validations);
+			if (fromInstance != null && toInstance != null && !service.isMappable(fromInstance, toInstance) && !isAllowedMaskedMapping(link, fromInstance, toInstance)) {
+				validations.add(addStepValidation(link, "link from '" + from + "' to '" + link.getTo() + "' maps incompatible types: " + fromInstance.getType() + " -> " + toInstance.getType()));
+			}
+		}
+		catch (Exception e) {
+			String message = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
+			validations.add(addStepValidation(link, "could not validate link compatibility from '" + from + "' to '" + link.getTo() + "': " + message));
+		}
+	}
+
+	private ComplexType getLinkTargetContext(Link link, ServiceContext serviceContext) {
+		if (link.getParent() instanceof Invoke) {
+			Service targetService = ((Invoke) link.getParent()).getService(serviceContext);
+			return targetService == null ? null : targetService.getServiceInterface().getInputDefinition();
+		}
+		return link.getParent().getPipeline(serviceContext);
+	}
+
+	private TypeInstance getReturnTypeInstance(Link link, String query, ComplexType context, List<Validation<?>> validations) throws Exception {
+		TypeOperation operation = link.getOperation(query);
+		int size = validations.size();
+		validations.addAll(operation.validate(context));
+		if (validations.size() > size) {
+			return null;
+		}
+		Type returnType = operation.getReturnType(context);
+		Value<?>[] properties = operation.getReturnProperties(context);
+		return properties == null ? new BaseTypeInstance(returnType) : new BaseTypeInstance(returnType, properties);
+	}
+
+	private boolean isAllowedMaskedMapping(Link link, TypeInstance fromInstance, TypeInstance toInstance) {
+		return link.getMask() != null && link.getMask() && fromInstance.getType() instanceof ComplexType && toInstance.getType() instanceof ComplexType;
 	}
 
 	private void validateForbiddenStepAttributes(Step step, List<Validation<?>> validations) {
@@ -349,9 +417,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	}
 
 	private void inheritStepMetadata(Step original, Step updated) {
-		if (updated.getId() == null || updated.getId().trim().isEmpty()) {
-			updated.setId(original.getId());
-		}
+		updated.setId(original.getId());
 		if (updated.getLineNumber() == null) {
 			updated.setLineNumber(original.getLineNumber());
 		}

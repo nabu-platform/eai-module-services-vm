@@ -70,9 +70,14 @@ Scalars are automatically converted when possible.
 
 Use `drop` to unset a value. Never in same map step that sets the value.
 
+When linking structures to one another without `mask`, they MUST be compatible structure definitions this means they must either be the same structure definition or share a parent structure definition.
 Use `mask` instead of standard <link> when two structures share fields but lack a shared object hierarchy. It recursively auto-casts types and ignores non-overlapping fields.
 
 Conditional links must be in a map step with that condition. If it conflicts with the map step they are in, move them to a new map step.
+
+Scalar types can NOT be linked to structures and structures can NOT be linked to scalars.
+
+Representing whitespace in a fixed value _must_ be done like `=" "`. The raw whitespace will not survive the XML parsing otherwise.
 
 ### <invoke>
 
