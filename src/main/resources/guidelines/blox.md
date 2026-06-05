@@ -63,12 +63,12 @@ A `link` has a `from` attribute, accepting:
 1) Fixed Values: Auto-cast to target types. Prefix with = for math (e.g., =a + b). No Java, method calls or ternaries. The left operand dictates the type ("1" + 1 yields "11"; 1 + "1" yields 2). Defaults: double (decimals), long (integers). Use b for exactness (1b = BigInteger, 1.0b = BigDecimal)
 You MUST set `fixedValue` to true for this.
 
-2) Queries against the pipeline: XPath-like syntax with Java operators (e.g., customers[name == "test" && vat == "something"]). Condition queries always return lists; index queries (e.g., customers[1]) return single items. Linking a list to a singular target is permitted ONLY if the list contains exactly one item at runtime. This feature can be used as a guard.
+2) Queries against the pipeline: XPath-like syntax with Java operators (e.g., customers[name == "test" && vat == "something"]). Condition queries always return lists; index queries (e.g., customers[1]) return single items. Linking a list to a singular target is permitted ONLY if the list contains exactly one item at runtime. This feature can be used as a guard to ensure that at runtime only one item exists so in the right circumstances prefer no index over index [0].
 
 The `to` attribute defines the target and requires explicit indices where applicable (e.g., employees[0]/name
 Scalars are automatically converted when possible.
 
-Use `drop` to unset a value. Never in same map step that sets the value.
+Use `drop` to unset a value. `NEVER` in same map step that sets the value. You do not need to drop a value in order to overwrite it, only to prevent a wrong value from being used in the future.
 
 When linking structures to one another without `mask`, they MUST be compatible structure definitions this means they must either be the same structure definition or share a parent structure definition.
 Use `mask` instead of standard <link> when two structures share fields but lack a shared object hierarchy. It recursively auto-casts types and ignores non-overlapping fields.

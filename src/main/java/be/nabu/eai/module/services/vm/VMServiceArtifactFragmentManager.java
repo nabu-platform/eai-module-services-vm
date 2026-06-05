@@ -136,6 +136,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				validateSequence(candidate, updated, validations);
 				validateForbiddenStepAttributes(updated, validations);
 				validateInvocationOrder(updated, validations);
+				validateMapDropSetConflicts(updated, validations);
 				validateLinkFixedValueConsistency(updated, validations);
 				validateLinkCompatibility(candidate, updated, validations);
 				normalizeInvokeCoordinates(updated);
@@ -208,6 +209,63 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				validateForbiddenStepAttributes((StepGroup) child, validations);
 			}
 		}
+	}
+
+	protected void validateMapDropSetConflicts(StepGroup group, List<Validation<?>> validations) {
+		if (group instanceof be.nabu.libs.services.vm.step.Map) {
+			validateMapDropSetConflicts((be.nabu.libs.services.vm.step.Map) group, validations);
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof StepGroup) {
+				validateMapDropSetConflicts((StepGroup) child, validations);
+			}
+		}
+	}
+
+	private void validateMapDropSetConflicts(be.nabu.libs.services.vm.step.Map map, List<Validation<?>> validations) {
+		List<String> dropPaths = new ArrayList<String>();
+		for (Step child : map.getChildren()) {
+			if (child instanceof be.nabu.libs.services.vm.step.Drop) {
+				String path = normalizePath(((be.nabu.libs.services.vm.step.Drop) child).getPath());
+				if (path != null) {
+					dropPaths.add(path);
+				}
+			}
+		}
+		if (dropPaths.isEmpty()) {
+			return;
+		}
+		for (Step child : map.getChildren()) {
+			if (child instanceof Link) {
+				Link link = (Link) child;
+				String target = normalizePath(link.getTo());
+				if (target != null) {
+					for (String dropPath : dropPaths) {
+						if (isSameOrChildPath(target, dropPath)) {
+							validations.add(addStepValidation(link, "link target '" + link.getTo() + "' is set in the same map step where '" + dropPath + "' is dropped"));
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private String normalizePath(String path) {
+		if (path == null) {
+			return null;
+		}
+		path = path.trim();
+		while (path.startsWith("/")) {
+			path = path.substring(1);
+		}
+		while (path.endsWith("/")) {
+			path = path.substring(0, path.length() - 1);
+		}
+		return path.isEmpty() ? null : path;
+	}
+
+	private boolean isSameOrChildPath(String target, String dropPath) {
+		return target.equals(dropPath) || target.startsWith(dropPath + "/") || target.startsWith(dropPath + ".");
 	}
 
 	protected void validateLinkFixedValueConsistency(StepGroup group, List<Validation<?>> validations) {
