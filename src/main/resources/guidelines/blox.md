@@ -92,7 +92,7 @@ Conditional invokes must be in a map step with that condition. If it conflicts w
 
 ### <for>
 
-- Iterates over a `query`, a fixed number (e.g., 1000), or a boolean condition (loops until false).
+- Iterates over a `query`, a fixed number (e.g., 1000), or a boolean condition (loops until false). If query is set to `true`, it loops indefinitely.
 - Variables: Injects `variable` (current item) and `index` dynamically into the pipeline for the loop's scope.
 - `into` attribute: Aggregates loop iteration outputs directly into a target list. Preferred over `nabu.utils.List.add`.
 - `batch` attribute: Fetches records in chunks; variables become a list instead of a single item.

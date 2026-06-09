@@ -72,18 +72,20 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 	@Override
 	public List<ArtifactFragment> listFragments(SimpleVMServiceDefinition artifact) {
+		Entry entry = EAIResourceRepository.getInstance().getEntry(artifact.getId());
+		boolean editable = entry instanceof ResourceEntry && entry.isEditable();
 		List<ArtifactFragment> fragments = new ArrayList<ArtifactFragment>();
 		for (ArtifactFragment fragment : super.listFragments(artifact)) {
 			if (fragment != null && ("input.xml".equals(fragment.getPath()) || "output.xml".equals(fragment.getPath()))) {
-				fragments.add(new EditableAliasFragment(fragment));
+				fragments.add(new EditableAliasFragment(fragment, editable));
 			}
 			else {
 				fragments.add(fragment);
 			}
 		}
 		fragments.addAll(Arrays.<ArtifactFragment>asList(
-			new SanitizedPipelineFragment(artifact),
-			new SanitizedServiceFragment(artifact)
+			new SanitizedPipelineFragment(artifact, editable),
+			new SanitizedServiceFragment(artifact, editable)
 		));
 		return fragments;
 	}
@@ -530,14 +532,16 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	private class EditableAliasFragment implements ArtifactFragment {
 
 		private ArtifactFragment delegate;
+		private boolean editable;
 
-		public EditableAliasFragment(ArtifactFragment delegate) {
+		public EditableAliasFragment(ArtifactFragment delegate, boolean editable) {
 			this.delegate = delegate;
+			this.editable = editable;
 		}
 
 		@Override
 		public boolean isEditable() {
-			return true;
+			return editable;
 		}
 
 		@Override
@@ -585,20 +589,22 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 		private SimpleVMServiceDefinition artifact;
 		private String path;
+		private boolean editable;
 
-		public RepositoryEntryFragment(SimpleVMServiceDefinition artifact, String path) {
+		public RepositoryEntryFragment(SimpleVMServiceDefinition artifact, String path, boolean editable) {
 			this.artifact = artifact;
 			this.path = path;
+			this.editable = editable;
 		}
 
 		@Override
 		public boolean isEditable() {
-			return true;
+			return editable;
 		}
 
 		@Override
 		public boolean isRemovable() {
-			return true;
+			return editable;
 		}
 
 		@Override
@@ -640,19 +646,21 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	private class SanitizedPipelineFragment implements ArtifactFragment {
 
 		private SimpleVMServiceDefinition artifact;
+		private boolean editable;
 
-		public SanitizedPipelineFragment(SimpleVMServiceDefinition artifact) {
+		public SanitizedPipelineFragment(SimpleVMServiceDefinition artifact, boolean editable) {
 			this.artifact = artifact;
+			this.editable = editable;
 		}
 
 		@Override
 		public boolean isEditable() {
-			return true;
+			return editable;
 		}
 
 		@Override
 		public boolean isRemovable() {
-			return true;
+			return editable;
 		}
 
 		@Override
@@ -704,19 +712,21 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 	private class SanitizedServiceFragment implements ArtifactFragment {
 
 		private SimpleVMServiceDefinition artifact;
+		private boolean editable;
 
-		public SanitizedServiceFragment(SimpleVMServiceDefinition artifact) {
+		public SanitizedServiceFragment(SimpleVMServiceDefinition artifact, boolean editable) {
 			this.artifact = artifact;
+			this.editable = editable;
 		}
 
 		@Override
 		public boolean isEditable() {
-			return true;
+			return editable;
 		}
 
 		@Override
 		public boolean isRemovable() {
-			return true;
+			return editable;
 		}
 
 		@Override
