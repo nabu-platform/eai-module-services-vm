@@ -137,6 +137,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				mergeStepMetadata(artifact.getRoot(), updated);
 				validateSequence(candidate, updated, validations);
 				validateForbiddenStepAttributes(updated, validations);
+				validateUniqueInvokeResultNames(updated, validations);
 				validateInvocationOrder(updated, validations);
 				validateMapDropSetConflicts(updated, validations);
 				validateLinkFixedValueConsistency(updated, validations);
@@ -189,6 +190,28 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 	protected void validateSequence(SimpleVMServiceDefinition service, Sequence sequence, List<Validation<?>> validations) {
 		validations.addAll(sequence.validate(EAIResourceRepository.getInstance().getServiceContext()));
+	}
+
+	protected void validateUniqueInvokeResultNames(StepGroup group, List<Validation<?>> validations) {
+		validateUniqueInvokeResultNames(group, validations, new HashMap<String, Invoke>());
+	}
+
+	private void validateUniqueInvokeResultNames(StepGroup group, List<Validation<?>> validations, Map<String, Invoke> invokesByResultName) {
+		for (Step child : group.getChildren()) {
+			if (child instanceof Invoke) {
+				Invoke invoke = (Invoke) child;
+				String resultName = invoke.getResultName();
+				if (resultName != null && !resultName.trim().isEmpty()) {
+					Invoke previous = invokesByResultName.putIfAbsent(resultName, invoke);
+					if (previous != null) {
+						validations.add(addStepValidation(invoke, "invoke resultName '" + resultName + "' is already used by another invoke"));
+					}
+				}
+			}
+			if (child instanceof StepGroup) {
+				validateUniqueInvokeResultNames((StepGroup) child, validations, invokesByResultName);
+			}
+		}
 	}
 
 	protected void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {

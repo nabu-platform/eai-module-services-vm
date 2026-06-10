@@ -49,6 +49,7 @@ Example:
 - dynamic variables (e.g. for `variable`) are injected at runtime and don't exist in pipeline.xml
 - variables must have unique names and can not be reassigned
 - enable input or output validation by setting `validate="true"`, for example `<structure name="input" validate="true">`
+- all variables OUTSIDE of `input` and `output` are internal and can not be seen by other services. The `input` contains the data you get from other services, the `output` contains the data you give back to other services.
 
 You must only use defined structures on the pipeline, do not create anonymous structures within the pipeline.
 
@@ -83,7 +84,7 @@ Representing whitespace in a fixed value _must_ be done like `=" "`. The raw whi
 
 - Calls artifacts in the artifactGroup `service` (contracts defined in input.xml/output.xml).
 - Inputs map via <link> statements inside the <invoke>.
-- Outputs are stored in a dynamic pipeline variable named via `resultName`.
+- Outputs are stored in a dynamic pipeline variable named via `resultName`. This variable is never seen by the user and should have a unique name that does not conflict with normal variables names. So dont use basic names like `list` or `sorted`. Use long names that start with `result` and should never collide with actual pipeline variables like `resultFromSortingInvoke`. Two invokes can NOT have the same `resultName` within a single service.
 - Dependent invokes within the same map step require a higher `invocationOrder` than their prerequisites (default is 0).
 - Independent invokes can have the same `invocationOrder`
 - Invokes should have the lowest possible `invocationOrder` based on their dependencies.
@@ -92,12 +93,27 @@ Conditional invokes must be in a map step with that condition. If it conflicts w
 
 ### <for>
 
-- Iterates over a `query`, a fixed number (e.g., 1000), or a boolean condition (loops until false). If query is set to `true`, it loops indefinitely.
-- Variables: Injects `variable` (current item) and `index` dynamically into the pipeline for the loop's scope.
+- Iterates over a `query`, a fixed number (e.g., 1000), or a boolean condition (loops until false). If query is set to `true`, it loops indefinitely. Assigns the current iteration to a variable with the configured name of `variable`.
+- Variables: Injects `variable` (current item) and `index` dynamically into the pipeline for the loop's scope. These MUST NOT be defined on the pipeline.
 - `into` attribute: Aggregates loop iteration outputs directly into a target list. Preferred over `nabu.utils.List.add`.
 - `batch` attribute: Fetches records in chunks; variables become a list instead of a single item.
 
 Anti-Pattern: Avoid DB selects inside loops. Pre-select data and use queries for small iterations or `nabu.utils.List.hash` to create a keyed lookup map for large iterations. Unique map keys yield single-item lists, safely linkable to singular targets within the loop.
+
+Example:
+
+```
+<for query="myList"
+	into="output/parts"
+	variable="myVariable">
+	<map comment="Map it to the parts">
+		<link>
+			<from>myVariable/unnamed0</from>
+			<to>output/parts[0]</to>
+		</link>
+	</map>
+</for>
+```
 
 ### label
 
@@ -133,3 +149,19 @@ Exits a `for` or `sequence`. `count` dictates break depth (default 1). Use `cont
 Transactions: No autocommit. The root service manages the global transaction (success = commit, exception = rollback). For localized control, apply `scopeDefaultTransaction="true"` to a sequence.
 
 Locking: Set `synchronized="true"` on a sequence for exclusive, cluster-wide execution. The lock releases when the sequence completes.
+
+### Interfaces
+
+A service can implement either a java interface or a defined specification artifact.
+To implement a java interface, pointing to the class is not enough, you have to point to the specific method in that class, for example in the `pipeline.xml`:
+
+```xml
+<structure interface="be.nabu.libs.services.api.ServiceLevelAgreementListProvider.getAllAgreements" name="pipeline">
+	<structure name="input"/>
+	<structure name="output"/>
+</structure>
+```
+
+There, `be.nabu.libs.services.api.ServiceLevelAgreementListProvider` is the actual java interface and `getAllAgreements` is the method within that interface.
+For an artifact specification, just set the id of the artifact as interface.
+When an interface is configured, the `input.xml` and `output.xml` are automatically updated to reflect that. You do NOT need to add the variables again manually to the input/output.
