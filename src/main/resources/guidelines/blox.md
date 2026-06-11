@@ -80,6 +80,9 @@ Scalar types can NOT be linked to structures and structures can NOT be linked to
 
 Representing whitespace in a fixed value _must_ be done like `=" "`. The raw whitespace will not survive the XML parsing otherwise.
 
+Links that map data FROM invoke TO the pipeline are executed AFTER all invokes are done, this means that data can NOT be used to feed another invoke in the same map step.
+Fixed values on the pipeline are executed AFTER all invokes are done, this means that data can NOT be used to feed an invoke in the same map step.
+
 ### <invoke>
 
 - Calls artifacts in the artifactGroup `service` (contracts defined in input.xml/output.xml).
@@ -165,3 +168,9 @@ To implement a java interface, pointing to the class is not enough, you have to 
 There, `be.nabu.libs.services.api.ServiceLevelAgreementListProvider` is the actual java interface and `getAllAgreements` is the method within that interface.
 For an artifact specification, just set the id of the artifact as interface.
 When an interface is configured, the `input.xml` and `output.xml` are automatically updated to reflect that. You do NOT need to add the variables again manually to the input/output.
+
+## Evaluation engine
+
+- operations are left-typed
+	- the right operand gets coerced to the left operand’s type
+	- therefore operand order matters when the two sides are not already the same type
