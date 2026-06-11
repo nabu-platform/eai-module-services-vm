@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.libs.evaluator.types.api.TypeOperation;
 import be.nabu.eai.module.services.iface.ServiceInterfaceManager;
-import be.nabu.eai.module.services.vm.RepositoryExecutorProvider;
 import be.nabu.eai.module.types.structure.StructureManager;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.eai.repository.EAIRepositoryUtils;
@@ -25,6 +24,7 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.impl.DefinedServiceArtifactFragmentManager;
+import be.nabu.eai.repository.impl.EditableAliasArtifactFragment;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
@@ -77,7 +77,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		List<ArtifactFragment> fragments = new ArrayList<ArtifactFragment>();
 		for (ArtifactFragment fragment : super.listFragments(artifact)) {
 			if (fragment != null && ("input.xml".equals(fragment.getPath()) || "output.xml".equals(fragment.getPath()))) {
-				fragments.add(new EditableAliasFragment(fragment, editable));
+				fragments.add(new EditableAliasArtifactFragment(fragment, editable));
 			}
 			else {
 				fragments.add(fragment);
@@ -92,7 +92,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 	@Override
 	public List<Validation<?>> updateFragment(SimpleVMServiceDefinition artifact, String path, String oldContent, String newContent) {
-		ResourceEntry entry = getResourceEntry(artifact);
+		ResourceEntry entry = (ResourceEntry) EAIResourceRepository.getInstance().getEntry(artifact.getId());
 		List<Validation<?>> validations = applyFragment(entry, artifact, path, oldContent, newContent);
 		if (!hasErrors(validations)) {
 			try {
@@ -119,7 +119,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				return validations;
 			}
 			if ("input.xml".equals(path) || "output.xml".equals(path)) {
-				Pipeline updated = StructureManager.parseUpdatedStructure(entry, readRepositoryResource(artifact, PIPELINE_PATH), artifact.getPipeline(), new Pipeline(null, null), validations);
+				Pipeline updated = StructureManager.parseUpdatedStructure(entry, EAIRepositoryUtils.readResource(entry, PIPELINE_PATH), artifact.getPipeline(), new Pipeline(null, null), validations);
 				if (!hasErrors(validations)) {
 					be.nabu.libs.types.structure.Structure target = (be.nabu.libs.types.structure.Structure) updated.get("input.xml".equals(path) ? Pipeline.INPUT : Pipeline.OUTPUT).getType();
 					StructureManager.parse(entry, newContent.getBytes("UTF-8"), validations, target);
@@ -552,61 +552,6 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		return "service";
 	}
 
-	private class EditableAliasFragment implements ArtifactFragment {
-
-		private ArtifactFragment delegate;
-		private boolean editable;
-
-		public EditableAliasFragment(ArtifactFragment delegate, boolean editable) {
-			this.delegate = delegate;
-			this.editable = editable;
-		}
-
-		@Override
-		public boolean isEditable() {
-			return editable;
-		}
-
-		@Override
-		public boolean isRemovable() {
-			return delegate.isRemovable();
-		}
-
-		@Override
-		public String getPath() {
-			return delegate.getPath();
-		}
-
-		@Override
-		public String getContent() {
-			return delegate.getContent();
-		}
-
-		@Override
-		public String getContentType() {
-			return delegate.getContentType();
-		}
-
-		@Override
-		public String getArtifactId() {
-			return delegate.getArtifactId();
-		}
-
-		@Override
-		public String getFragmentType() {
-			return delegate.getFragmentType();
-		}
-
-		@Override
-		public Map<String, String> getProperties() {
-			return delegate.getProperties();
-		}
-
-		@Override
-		public Long getLastModified() {
-			return delegate.getLastModified();
-		}
-	}
 
 	private class RepositoryEntryFragment implements ArtifactFragment {
 
@@ -637,7 +582,8 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 		@Override
 		public String getContent() {
-			return readRepositoryResource(artifact, path);
+			ResourceEntry entry = (ResourceEntry) EAIResourceRepository.getInstance().getEntry(artifact.getId());
+			return EAIRepositoryUtils.readResource(entry, path);
 		}
 
 		@Override
@@ -693,7 +639,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 		@Override
 		public String getContent() {
-			ResourceEntry entry = getResourceEntry(artifact);
+			ResourceEntry entry = (ResourceEntry) EAIResourceRepository.getInstance().getEntry(artifact.getId());
 			try {
 				XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();
 				marshaller.setIgnoreUnknownSuperTypes(true);
@@ -759,7 +705,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 		@Override
 		public String getContent() {
-			ResourceEntry entry = getResourceEntry(artifact);
+			ResourceEntry entry = (ResourceEntry) EAIResourceRepository.getInstance().getEntry(artifact.getId());
 			try {
 				Resource resource = ResourceUtils.resolve(entry.getContainer(), SERVICE_PATH);
 				if (resource == null) {
@@ -807,24 +753,4 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
-	protected String readRepositoryResource(SimpleVMServiceDefinition artifact, String path) {
-		ResourceEntry entry = getResourceEntry(artifact);
-		try {
-			Resource resource = ResourceUtils.resolve(entry.getContainer(), path);
-			if (resource == null) {
-				throw new IOException("Can not find " + path);
-			}
-			try (ResourceReadableContainer readable = new ResourceReadableContainer((ReadableResource) resource)) {
-				return new String(IOUtils.toBytes(readable), "UTF-8");
-			}
-		}
-		catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	protected ResourceEntry getResourceEntry(SimpleVMServiceDefinition artifact) {
-		return (ResourceEntry) EAIResourceRepository.getInstance().getEntry(artifact.getId());
-	}
-	
 }
