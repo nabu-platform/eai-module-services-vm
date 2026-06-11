@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,9 @@ import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
+import be.nabu.libs.services.vm.step.LimitedStepGroup;
+import be.nabu.libs.services.vm.step.Break;
+import be.nabu.libs.services.vm.step.For;
 import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Link;
 import be.nabu.libs.services.vm.step.Sequence;
@@ -136,7 +140,9 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				candidate.setRoot(updated);
 				mergeStepMetadata(artifact.getRoot(), updated);
 				validateSequence(candidate, updated, validations);
+				validateAllowedChildSteps(updated, validations);
 				validateForbiddenStepAttributes(updated, validations);
+				validateBreakContinueTargets(updated, validations);
 				validateUniqueInvokeResultNames(updated, validations);
 				validateInvocationOrder(updated, validations);
 				validateMapDropSetConflicts(updated, validations);
@@ -225,6 +231,26 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
+	protected void validateAllowedChildSteps(StepGroup group, List<Validation<?>> validations) {
+		if (group instanceof LimitedStepGroup) {
+			Set<Class<? extends Step>> allowedSteps = ((LimitedStepGroup) group).getAllowedSteps();
+			for (Step child : group.getChildren()) {
+				if (!allowedSteps.contains(child.getClass())) {
+					validations.add(addStepValidation(child, "<" + getStepTag(child) + "> is not allowed in <" + getStepTag((Step) group) + ">"));
+				}
+				if (child instanceof StepGroup) {
+					validateAllowedChildSteps((StepGroup) child, validations);
+				}
+			}
+			return;
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof StepGroup) {
+				validateAllowedChildSteps((StepGroup) child, validations);
+			}
+		}
+	}
+
 	protected void validateForbiddenStepAttributes(StepGroup group, List<Validation<?>> validations) {
 		for (Step child : group.getChildren()) {
 			if (child instanceof Invoke || child instanceof Link || child instanceof be.nabu.libs.services.vm.step.Drop) {
@@ -232,6 +258,17 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 			}
 			if (child instanceof StepGroup) {
 				validateForbiddenStepAttributes((StepGroup) child, validations);
+			}
+		}
+	}
+
+	protected void validateBreakContinueTargets(StepGroup group, List<Validation<?>> validations) {
+		for (Step child : group.getChildren()) {
+			if (child instanceof Break) {
+				validateBreakContinueTarget((Break) child, validations);
+			}
+			if (child instanceof StepGroup) {
+				validateBreakContinueTargets((StepGroup) child, validations);
 			}
 		}
 	}
@@ -368,6 +405,26 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 	private boolean isAllowedMaskedMapping(Link link, TypeInstance fromInstance, TypeInstance toInstance) {
 		return link.getMask() != null && link.getMask() && fromInstance.getType() instanceof ComplexType && toInstance.getType() instanceof ComplexType;
+	}
+
+	private void validateBreakContinueTarget(Break breakStep, List<Validation<?>> validations) {
+		if (breakStep.getContinueExecution() == null || !breakStep.getContinueExecution()) {
+			return;
+		}
+		int count = breakStep.getCount();
+		StepGroup current = breakStep.getParent();
+		while (current != null) {
+			if (current instanceof Sequence || current instanceof For) {
+				count--;
+				if (count == 0) {
+					if (current instanceof Sequence) {
+						validations.add(addStepValidation(breakStep, "continue is not allowed when break targets a <sequence>"));
+					}
+					return;
+				}
+			}
+			current = current.getParent();
+		}
 	}
 
 	private void validateForbiddenStepAttributes(Step step, List<Validation<?>> validations) {

@@ -144,6 +144,20 @@ Example:
 ### break
 
 Exits a `for` or `sequence`. `count` dictates break depth (default 1). Use `continueExecution="true"` to skip to the next for iteration.
+It is important to stress that the break can ALSO break sequences.
+So if you have a sequence inside a for loop and want to continue with the next loop iteration, you need break count 2, for example:
+
+```xml
+<for query="gauges"
+	variable="gauge">
+	<sequence label="gauge/lastRun != null &amp;&amp; gauge/pollInterval != null">
+		<break 	label="runNext &gt; lastRunBefore">
+			<count>2</count>
+			<continueExecution>true</continueExecution>
+		</break>
+	</sequence>
+</for>
+```
 
 ### sequence
 
