@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,6 +146,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				validateBreakContinueTargets(updated, validations);
 				validateUniqueInvokeResultNames(updated, validations);
 				validateInvocationOrder(updated, validations);
+				validateMapPipelineReadWriteConflicts(updated, validations);
 				validateMapDropSetConflicts(updated, validations);
 				validateLinkFixedValueConsistency(updated, validations);
 				validateLinkCompatibility(candidate, updated, validations);
@@ -273,6 +275,150 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
+	protected void validateMapPipelineReadWriteConflicts(StepGroup group, List<Validation<?>> validations) {
+		if (group instanceof be.nabu.libs.services.vm.step.Map) {
+			validateMapPipelineReadWriteConflicts((be.nabu.libs.services.vm.step.Map) group, validations);
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof StepGroup) {
+				validateMapPipelineReadWriteConflicts((StepGroup) child, validations);
+			}
+		}
+	}
+
+	private void validateMapPipelineReadWriteConflicts(be.nabu.libs.services.vm.step.Map map, List<Validation<?>> validations) {
+		Map<String, List<Link>> plainWritesByPath = new HashMap<String, List<Link>>();
+		Map<String, List<Link>> invokeResultWritesByPath = new HashMap<String, List<Link>>();
+		Map<Invoke, Set<String>> invokePipelineReads = new IdentityHashMap<Invoke, Set<String>>();
+		Map<Invoke, Set<Invoke>> invokeDependencies = new IdentityHashMap<Invoke, Set<Invoke>>();
+		Map<String, Invoke> invokesByResultName = new HashMap<String, Invoke>();
+		for (Step child : map.getChildren()) {
+			if (child instanceof Invoke) {
+				Invoke invoke = (Invoke) child;
+				String resultName = invoke.getResultName();
+				if (resultName != null && !resultName.trim().isEmpty()) {
+					invokesByResultName.put(resultName, invoke);
+				}
+			}
+		}
+		for (Step child : map.getChildren()) {
+			if (child instanceof Link) {
+				Link link = (Link) child;
+				String target = normalizePath(link.getTo());
+				String source = link.isFixedValue() ? null : normalizePath(link.getFrom());
+				if (target == null) {
+					continue;
+				}
+				Invoke sourceInvoke = getInvokeForPath(source, invokesByResultName);
+				if (sourceInvoke == null) {
+					addLinkByPath(plainWritesByPath, target, link);
+				}
+				else {
+					addLinkByPath(invokeResultWritesByPath, target, link);
+				}
+			}
+			else if (child instanceof Invoke) {
+				Invoke invoke = (Invoke) child;
+				Set<String> reads = new HashSet<String>();
+				Set<Invoke> dependencies = new HashSet<Invoke>();
+				for (Step invokeChild : invoke.getChildren()) {
+					if (!(invokeChild instanceof Link)) {
+						continue;
+					}
+					Link link = (Link) invokeChild;
+					if (link.isFixedValue()) {
+						continue;
+					}
+					String source = normalizePath(link.getFrom());
+					if (source == null) {
+						continue;
+					}
+					Invoke sourceInvoke = getInvokeForPath(source, invokesByResultName);
+					if (sourceInvoke == null) {
+						reads.add(source);
+					}
+					else if (!sourceInvoke.equals(invoke)) {
+						dependencies.add(sourceInvoke);
+					}
+				}
+				invokePipelineReads.put(invoke, reads);
+				invokeDependencies.put(invoke, dependencies);
+			}
+		}
+		for (Map.Entry<Invoke, Set<String>> entry : invokePipelineReads.entrySet()) {
+			Invoke invoke = entry.getKey();
+			for (String readPath : entry.getValue()) {
+				for (Map.Entry<String, List<Link>> plainWriteEntry : plainWritesByPath.entrySet()) {
+					if (pathsOverlap(readPath, plainWriteEntry.getKey())) {
+						for (Link link : plainWriteEntry.getValue()) {
+							validations.add(addStepValidation(link, "plain pipeline link target '" + link.getTo() + "' conflicts with invoke input read '" + readPath + "' in the same map step"));
+						}
+					}
+				}
+				for (Map.Entry<String, List<Link>> invokeWriteEntry : invokeResultWritesByPath.entrySet()) {
+					if (!pathsOverlap(readPath, invokeWriteEntry.getKey())) {
+						continue;
+					}
+					for (Link link : invokeWriteEntry.getValue()) {
+						Invoke writerInvoke = getInvokeForPath(normalizePath(link.getFrom()), invokesByResultName);
+						if (writerInvoke == null || (!writerInvoke.equals(invoke) && !dependsOn(writerInvoke, invoke, invokeDependencies, new HashSet<Invoke>()))) {
+							validations.add(addStepValidation(link, "invoke result write to '" + link.getTo() + "' conflicts with invoke input read '" + readPath + "' in the same map step"));
+						}
+					}
+				}
+			}
+		}
+		for (Map.Entry<String, List<Link>> plainWriteEntry : plainWritesByPath.entrySet()) {
+			for (Map.Entry<String, List<Link>> invokeWriteEntry : invokeResultWritesByPath.entrySet()) {
+				if (pathsOverlap(plainWriteEntry.getKey(), invokeWriteEntry.getKey())) {
+					for (Link link : invokeWriteEntry.getValue()) {
+						validations.add(addStepValidation(link, "invoke result write to '" + link.getTo() + "' conflicts with a plain pipeline link target in the same map step"));
+					}
+				}
+			}
+		}
+	}
+
+	private void addLinkByPath(Map<String, List<Link>> linksByPath, String path, Link link) {
+		List<Link> links = linksByPath.get(path);
+		if (links == null) {
+			links = new ArrayList<Link>();
+			linksByPath.put(path, links);
+		}
+		links.add(link);
+	}
+
+	private Invoke getInvokeForPath(String path, Map<String, Invoke> invokesByResultName) {
+		if (path == null) {
+			return null;
+		}
+		for (Map.Entry<String, Invoke> entry : invokesByResultName.entrySet()) {
+			if (isSameOrChildPath(path, entry.getKey())) {
+				return entry.getValue();
+			}
+		}
+		return null;
+	}
+
+	private boolean dependsOn(Invoke invoke, Invoke dependency, Map<Invoke, Set<Invoke>> invokeDependencies, Set<Invoke> visited) {
+		if (!visited.add(invoke)) {
+			return false;
+		}
+		Set<Invoke> dependencies = invokeDependencies.get(invoke);
+		if (dependencies == null || dependencies.isEmpty()) {
+			return false;
+		}
+		if (dependencies.contains(dependency)) {
+			return true;
+		}
+		for (Invoke candidate : dependencies) {
+			if (dependsOn(candidate, dependency, invokeDependencies, visited)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	protected void validateMapDropSetConflicts(StepGroup group, List<Validation<?>> validations) {
 		if (group instanceof be.nabu.libs.services.vm.step.Map) {
 			validateMapDropSetConflicts((be.nabu.libs.services.vm.step.Map) group, validations);
@@ -328,6 +474,10 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 
 	private boolean isSameOrChildPath(String target, String dropPath) {
 		return target.equals(dropPath) || target.startsWith(dropPath + "/") || target.startsWith(dropPath + ".");
+	}
+
+	private boolean pathsOverlap(String left, String right) {
+		return isSameOrChildPath(left, right) || isSameOrChildPath(right, left);
 	}
 
 	protected void validateLinkFixedValueConsistency(StepGroup group, List<Validation<?>> validations) {
