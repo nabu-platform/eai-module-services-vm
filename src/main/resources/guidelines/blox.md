@@ -83,11 +83,15 @@ Representing whitespace in a fixed value _must_ be done like `=" "`. The raw whi
 Links that map data FROM invoke TO the pipeline are executed AFTER all invokes are done, this means that data can NOT be used to feed another invoke in the same map step.
 Fixed values on the pipeline are executed AFTER all invokes are done, this means that data can NOT be used to feed an invoke in the same map step.
 
+A link can be set to `optional`, it will only be mapped if the target is null.
+A link can be set to `patch` which will only be mapped if the source has any value (it can be null).
+A link can be set to `sourceNotNull` which will only be mapped if the source has a non null value.
+
 ### <invoke>
 
 - Calls artifacts in the artifactGroup `service` (contracts defined in input.xml/output.xml).
 - Inputs map via <link> statements inside the <invoke>.
-- Outputs are stored in a dynamic pipeline variable named via `resultName`. This variable is never seen by the user and should have a unique name that does not conflict with normal variables names. So dont use basic names like `list` or `sorted`. Use long names that start with `result` and should never collide with actual pipeline variables like `resultFromSortingInvoke`. Two invokes can NOT have the same `resultName` within a single service.
+- Outputs are stored in a dynamic pipeline variable named via `resultName`. This variable is never seen by the user and should have a unique name that does not conflict with normal variables names. So dont use basic names like `list` or `sorted`. Use long names that start with `result` and should never collide with actual pipeline variables like `resultFromSortingInvoke`. Two invokes can reuse the same `resultName` only when they call the same service. For different services within a single service definition, `resultName` must remain unique.
 - Dependent invokes within the same map step require a higher `invocationOrder` than their prerequisites (default is 0).
 - Independent invokes can have the same `invocationOrder`
 - Invokes should have the lowest possible `invocationOrder` based on their dependencies.

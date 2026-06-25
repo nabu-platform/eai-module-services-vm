@@ -211,8 +211,8 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				String resultName = invoke.getResultName();
 				if (resultName != null && !resultName.trim().isEmpty()) {
 					Invoke previous = invokesByResultName.putIfAbsent(resultName, invoke);
-					if (previous != null) {
-						validations.add(addStepValidation(invoke, "invoke resultName '" + resultName + "' is already used by another invoke"));
+					if (previous != null && !sameService(previous, invoke)) {
+						validations.add(addStepValidation(invoke, "invoke resultName '" + resultName + "' is already used by another invoke for service '" + previous.getServiceId() + "'"));
 					}
 				}
 			}
@@ -220,6 +220,12 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				validateUniqueInvokeResultNames((StepGroup) child, validations, invokesByResultName);
 			}
 		}
+	}
+
+	private boolean sameService(Invoke first, Invoke second) {
+		String firstServiceId = first.getServiceId();
+		String secondServiceId = second.getServiceId();
+		return firstServiceId == null ? secondServiceId == null : firstServiceId.equals(secondServiceId);
 	}
 
 	protected void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {
