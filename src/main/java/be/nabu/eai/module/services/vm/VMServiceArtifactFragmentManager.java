@@ -81,7 +81,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		boolean editable = entry instanceof ResourceEntry && entry.isEditable();
 		List<ArtifactFragment> fragments = new ArrayList<ArtifactFragment>();
 		for (ArtifactFragment fragment : super.listFragments(artifact)) {
-			if (fragment != null && ("input.xml".equals(fragment.getPath()) || "output.xml".equals(fragment.getPath()))) {
+			if (fragment != null && ("metadata.xml".equals(fragment.getPath()) || "input.xml".equals(fragment.getPath()) || "output.xml".equals(fragment.getPath()))) {
 				fragments.add(new EditableAliasArtifactFragment(fragment, editable));
 			}
 			else {
