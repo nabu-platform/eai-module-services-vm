@@ -91,10 +91,11 @@ A link can be set to `sourceNotNull` which will only be mapped if the source has
 
 - Calls artifacts in the artifactGroup `service` (contracts defined in input.xml/output.xml).
 - Inputs map via <link> statements inside the <invoke>.
-- Outputs are stored in a dynamic pipeline variable named via `resultName`. This variable is never seen by the user and should have a unique name that does not conflict with normal variables names. So dont use basic names like `list` or `sorted`. Use long names that start with `result` and should never collide with actual pipeline variables like `resultFromSortingInvoke`. Two invokes can reuse the same `resultName` only when they call the same service. For different services within a single service definition, `resultName` must remain unique.
+- Outputs are stored in a dynamic pipeline variable named via `resultName`. Every invoke in the entire service definition MUST use a unique `resultName`, including invokes that call the same service and invokes in different or sequential map steps. Never reuse a `resultName`. The name must also not conflict with normal pipeline variables, so avoid basic names like `list` or `sorted`; use a descriptive name starting with `result`, such as `resultFromSortingInvoke`.
 - Dependent invokes within the same map step require a higher `invocationOrder` than their prerequisites (default is 0).
 - Independent invokes can have the same `invocationOrder`
 - Invokes should have the lowest possible `invocationOrder` based on their dependencies.
+- Output from an invoke MUST be explicitly mapped to the pipeline if you want to use it in a later step. You can NOT reuse the dynamic variable in a later map step.
 
 Conditional invokes must be in a map step with that condition. If it conflicts with the map step they are in, move them to a new map step.
 

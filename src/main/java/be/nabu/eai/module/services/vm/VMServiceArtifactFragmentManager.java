@@ -145,6 +145,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				validateForbiddenStepAttributes(updated, validations);
 				validateBreakContinueTargets(updated, validations);
 				validateUniqueInvokeResultNames(updated, validations);
+				validateDynamicInvokeResultUsage(updated, validations);
 				validateInvocationOrder(updated, validations);
 				validateMapPipelineReadWriteConflicts(updated, validations);
 				validateMapDropSetConflicts(updated, validations);
@@ -211,8 +212,8 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 				String resultName = invoke.getResultName();
 				if (resultName != null && !resultName.trim().isEmpty()) {
 					Invoke previous = invokesByResultName.putIfAbsent(resultName, invoke);
-					if (previous != null && !sameService(previous, invoke)) {
-						validations.add(addStepValidation(invoke, "invoke resultName '" + resultName + "' is already used by another invoke for service '" + previous.getServiceId() + "'"));
+					if (previous != null) {
+						validations.add(addStepValidation(invoke, "invoke resultName '" + resultName + "' is already used by another invoke"));
 					}
 				}
 			}
@@ -222,10 +223,72 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 		}
 	}
 
-	private boolean sameService(Invoke first, Invoke second) {
-		String firstServiceId = first.getServiceId();
-		String secondServiceId = second.getServiceId();
-		return firstServiceId == null ? secondServiceId == null : firstServiceId.equals(secondServiceId);
+	protected void validateDynamicInvokeResultUsage(StepGroup group, List<Validation<?>> validations) {
+		Map<String, Set<be.nabu.libs.services.vm.step.Map>> resultOwners = new HashMap<String, Set<be.nabu.libs.services.vm.step.Map>>();
+		collectDynamicInvokeResultOwners(group, null, resultOwners);
+		validateDynamicInvokeResultUsage(group, null, resultOwners, validations);
+	}
+
+	private void collectDynamicInvokeResultOwners(StepGroup group, be.nabu.libs.services.vm.step.Map currentMap, Map<String, Set<be.nabu.libs.services.vm.step.Map>> resultOwners) {
+		if (group instanceof be.nabu.libs.services.vm.step.Map) {
+			currentMap = (be.nabu.libs.services.vm.step.Map) group;
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof Invoke && currentMap != null && ((Invoke) child).isTemporaryMapping()) {
+				String resultName = ((Invoke) child).getResultName();
+				if (resultName != null && !resultName.trim().isEmpty()) {
+					Set<be.nabu.libs.services.vm.step.Map> owners = resultOwners.get(resultName);
+					if (owners == null) {
+						owners = Collections.newSetFromMap(new IdentityHashMap<be.nabu.libs.services.vm.step.Map, Boolean>());
+						resultOwners.put(resultName, owners);
+					}
+					owners.add(currentMap);
+				}
+			}
+			if (child instanceof StepGroup) {
+				collectDynamicInvokeResultOwners((StepGroup) child, currentMap, resultOwners);
+			}
+		}
+	}
+
+	private void validateDynamicInvokeResultUsage(StepGroup group, be.nabu.libs.services.vm.step.Map currentMap, Map<String, Set<be.nabu.libs.services.vm.step.Map>> resultOwners, List<Validation<?>> validations) {
+		if (group instanceof be.nabu.libs.services.vm.step.Map) {
+			currentMap = (be.nabu.libs.services.vm.step.Map) group;
+		}
+		for (Step child : group.getChildren()) {
+			if (child instanceof Link) {
+				Link link = (Link) child;
+				String resultName = getReferencedDynamicInvokeResult(link, resultOwners.keySet());
+				if (resultName != null) {
+					if (link.isFixedValue()) {
+						validations.add(addStepValidation(link, "dynamic invoke result '" + resultName + "' cannot be used by a fixed-value link"));
+					}
+					else if (currentMap == null || !resultOwners.get(resultName).contains(currentMap)) {
+						validations.add(addStepValidation(link, "dynamic invoke result '" + resultName + "' may only be used within the map step that defines it"));
+					}
+				}
+			}
+			if (child instanceof StepGroup) {
+				validateDynamicInvokeResultUsage((StepGroup) child, currentMap, resultOwners, validations);
+			}
+		}
+	}
+
+	private String getReferencedDynamicInvokeResult(Link link, Set<String> resultNames) {
+		String from = link.getFrom();
+		if (from == null || (link.isFixedValue() && (!from.startsWith("=") || "=".equals(from)))) {
+			return null;
+		}
+		String source = normalizePath(link.isFixedValue() ? from.substring(1) : from);
+		if (source == null) {
+			return null;
+		}
+		for (String resultName : resultNames) {
+			if (isSameOrChildPath(source, resultName)) {
+				return resultName;
+			}
+		}
+		return null;
 	}
 
 	protected void validateInvocationOrder(StepGroup group, List<Validation<?>> validations) {
