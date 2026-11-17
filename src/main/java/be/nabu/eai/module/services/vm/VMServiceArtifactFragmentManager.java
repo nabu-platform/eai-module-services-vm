@@ -431,7 +431,7 @@ public class VMServiceArtifactFragmentManager extends DefinedServiceArtifactFrag
 					for (Link link : invokeWriteEntry.getValue()) {
 						Invoke writerInvoke = getInvokeForPath(normalizePath(link.getFrom()), invokesByResultName);
 						if (writerInvoke == null || (!writerInvoke.equals(invoke) && !dependsOn(writerInvoke, invoke, invokeDependencies, new HashSet<Invoke>()))) {
-							validations.add(addStepValidation(link, "invoke result write to '" + link.getTo() + "' conflicts with invoke input read '" + readPath + "' in the same map step"));
+							validations.add(addStepValidation(link, "invoke result write to '" + link.getTo() + "' conflicts with invoke input read '" + readPath + "' in the same map step; link the source invoke result directly to the target invoke input and set the target invocationOrder higher than the producer's"));
 						}
 					}
 				}

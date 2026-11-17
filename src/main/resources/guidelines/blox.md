@@ -80,8 +80,18 @@ Scalar types can NOT be linked to structures and structures can NOT be linked to
 
 Representing whitespace in a fixed value _must_ be done like `=" "`. The raw whitespace will not survive the XML parsing otherwise.
 
-Links that map data FROM invoke TO the pipeline are executed AFTER all invokes are done, this means that data can NOT be used to feed another invoke in the same map step.
-Fixed values on the pipeline are executed AFTER all invokes are done, this means that data can NOT be used to feed an invoke in the same map step.
+Links that map data FROM invoke TO the pipeline are executed AFTER all invokes are done, so do not stage an invoke result through the pipeline to feed another invoke in the same map step. Instead link the source result directly inside the target invoke, with the target `invocationOrder` higher than the producer's:
+
+```xml
+<map>
+	<invoke serviceId="example.action.lookup" resultName="resultAction" invocationOrder="0"/>
+	<invoke serviceId="example.action.apply" resultName="resultApplied" invocationOrder="1">
+		<link from="resultAction/expiryActionId" to="expiryActionId"/>
+	</invoke>
+</map>
+```
+
+Mapping an invoke result to the pipeline remains valid for output or for an invoke in a later map step; later maps read the pipeline path, not the dynamic result name. Fixed values on the pipeline are executed AFTER all invokes are done, so they cannot feed an invoke in the same map step.
 
 A link can be set to `optional`, it will only be mapped if the target is null.
 A link can be set to `patch` which will only be mapped if the source has any value (it can be null).

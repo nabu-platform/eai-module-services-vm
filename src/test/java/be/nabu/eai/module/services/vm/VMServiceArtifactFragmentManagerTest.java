@@ -71,6 +71,54 @@ public class VMServiceArtifactFragmentManagerTest {
 		assertTrue(validations.get(0).getMessage().startsWith("dynamic invoke result '" + RESULT_NAME + "' cannot be used by a fixed-value link"));
 	}
 
+	@Test
+	public void sameMapInvokeResultPipelineRelayIsRejected() {
+		Invoke producer = invoke(null);
+		producer.setResultName("resultAction");
+		Invoke consumer = invoke(null);
+		consumer.setResultName("resultApplied");
+		consumer.setInvocationOrder(1);
+		consumer.getChildren().add(new Link("expiryActionId", "expiryActionId"));
+		Map map = new Map(producer, consumer, new Link("resultAction/expiryActionId", "expiryActionId"));
+
+		List<Validation<?>> validations = validateMapPipelineReadWriteConflicts(new Sequence(map));
+
+		assertEquals(1, validations.size());
+		assertTrue(validations.get(0).getMessage().contains("invoke result write to 'expiryActionId' conflicts with invoke input read 'expiryActionId'"));
+		assertTrue(validations.get(0).getMessage().contains("link the source invoke result directly to the target invoke input"));
+		assertTrue(validations.get(0).getMessage().contains("target invocationOrder higher than the producer's"));
+	}
+
+	@Test
+	public void orderedDirectInvokeResultLinkIsAccepted() {
+		Invoke producer = invoke(null);
+		producer.setResultName("resultAction");
+		Invoke consumer = invoke(null);
+		consumer.setResultName("resultApplied");
+		consumer.setInvocationOrder(1);
+		consumer.getChildren().add(new Link("resultAction/expiryActionId", "expiryActionId"));
+
+		Sequence sequence = new Sequence(new Map(producer, consumer));
+		assertTrue(validateMapPipelineReadWriteConflicts(sequence).isEmpty());
+		List<Validation<?>> orderValidations = new ArrayList<Validation<?>>();
+		manager.validateInvocationOrder(sequence, orderValidations);
+		assertTrue(orderValidations.isEmpty());
+	}
+
+	@Test
+	public void invokeResultPipelineStagingForLaterMapAndOutputIsAccepted() {
+		Invoke producer = invoke(null);
+		producer.setResultName("resultAction");
+		Map first = new Map(producer,
+			new Link("resultAction/expiryActionId", "expiryActionId"),
+			new Link("resultAction/expiryActionId", "output/expiryActionId"));
+		Invoke consumer = invoke(null);
+		consumer.setResultName("resultApplied");
+		consumer.getChildren().add(new Link("expiryActionId", "expiryActionId"));
+
+		assertTrue(validateMapPipelineReadWriteConflicts(new Sequence(first, new Map(consumer))).isEmpty());
+	}
+
 	private Map mapWithInvoke(Step... additionalSteps) {
 		Invoke invoke = invoke(null);
 		Step[] steps = new Step[additionalSteps.length + 1];
@@ -95,6 +143,12 @@ public class VMServiceArtifactFragmentManagerTest {
 	private List<Validation<?>> validateDynamicInvokeResultUsage(Sequence sequence) {
 		List<Validation<?>> validations = new ArrayList<Validation<?>>();
 		manager.validateDynamicInvokeResultUsage(sequence, validations);
+		return validations;
+	}
+
+	private List<Validation<?>> validateMapPipelineReadWriteConflicts(Sequence sequence) {
+		List<Validation<?>> validations = new ArrayList<Validation<?>>();
+		manager.validateMapPipelineReadWriteConflicts(sequence, validations);
 		return validations;
 	}
 }
